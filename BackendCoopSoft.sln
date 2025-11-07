@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackendCoopSoft", "BackendCoopSoft.csproj", "{EDABADA2-5921-83BA-6DE8-26AF22049509}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EDABADA2-5921-83BA-6DE8-26AF22049509}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDABADA2-5921-83BA-6DE8-26AF22049509}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDABADA2-5921-83BA-6DE8-26AF22049509}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDABADA2-5921-83BA-6DE8-26AF22049509}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {14B16FF1-D6F5-4092-8777-507B71AE4AB9}
+	EndGlobalSection
+EndGlobal
