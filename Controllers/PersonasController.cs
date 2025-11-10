@@ -49,21 +49,62 @@ namespace BackendCoopSoft.Controllers
             var persona = _mapper.Map<Persona>(personaCrearDTO);
             await _db.Personas.AddAsync(persona);
             await _db.SaveChangesAsync();
+
+            if (personaCrearDTO.Huella != null && personaCrearDTO.Huella.Length > 0)
+            {
+                var huella = new HuellaDactilar
+                {
+                    IdPersona = persona.IdPersona,
+                    Huella = personaCrearDTO.Huella
+                };
+                await _db.HuellasDactilares.AddAsync(huella);
+                await _db.SaveChangesAsync();
+            }
             var personaCreada = _mapper.Map<PersonasListarDTO>(persona);
             return CreatedAtAction(nameof(ObtenerPersonaId), new { id = persona.IdPersona }, personaCreada);
         }
+
+
         [HttpPut("{id:int}")]
         public async Task<IActionResult> ActualizarPersona(int id, PersonaCrearDTO personaActualizarDTO)
         {
             var persona = await _db.Personas.FirstOrDefaultAsync(p => p.IdPersona == id);
             if (persona is null)
-            {
                 return NotFound("Persona no encontrada");
-            }
+
+            // Actualizar los datos de la persona
             _mapper.Map(personaActualizarDTO, persona);
+
+            // Actualizar la huella si viene en el DTO
+            if (personaActualizarDTO.Huella != null && personaActualizarDTO.Huella.Length > 0)
+            {
+                // Buscar si ya existe una huella para esa persona
+                var huella = await _db.HuellasDactilares.FirstOrDefaultAsync(h => h.IdPersona == id);
+
+                if (huella != null)
+                {
+                    // Actualizar huella existente
+                    huella.Huella = personaActualizarDTO.Huella;
+                    _db.HuellasDactilares.Update(huella);
+                }
+                else
+                {
+                    // Crear nueva huella
+                    huella = new HuellaDactilar
+                    {
+                        IdPersona = id,
+                        Huella = personaActualizarDTO.Huella
+                    };
+                    await _db.HuellasDactilares.AddAsync(huella);
+                }
+            }
+
             await _db.SaveChangesAsync();
             return NoContent();
         }
+
+
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> EliminarPersona(int id)
         {
@@ -76,6 +117,20 @@ namespace BackendCoopSoft.Controllers
             await _db.SaveChangesAsync();
             return NoContent();
         }
+        [HttpGet("{id:int}/huella")]
+        public async Task<IActionResult> ObtenerHuellaPersona(int id)
+        {
+            var huella = await _db.HuellasDactilares
+                                  .Where(h => h.IdPersona == id)
+                                  .Select(h => h.Huella)
+                                  .FirstOrDefaultAsync();
+
+            if (huella == null)
+                return NotFound("Huella no registrada");
+
+            return Ok(huella);
+        }
+
 
     }
 }

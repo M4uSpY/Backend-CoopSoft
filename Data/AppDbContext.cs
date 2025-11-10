@@ -70,7 +70,7 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<Horario>()
-            .HasIndex(h => new { h.IdTrabajador, h.IdDiaSemana })
+            .HasIndex(h => new { h.IdTrabajador, h.DiaSemana })
             .IsUnique();
 
         // Decimales
@@ -149,11 +149,6 @@ public class AppDbContext : DbContext
             .HasForeignKey(p => p.IdNacionalidad)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<Horario>()
-            .HasOne(h => h.DiaSemana)
-            .WithMany(c => c.Horarios)
-            .HasForeignKey(h => h.IdDiaSemana)
-            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Contrato>()
             .HasOne(c => c.TipoContrato)

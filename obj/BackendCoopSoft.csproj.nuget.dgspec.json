@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "E:\\CooperativaSoft\\Avance01112025\\Nuevos\\Nuevos\\BackendCoopSoft\\BackendCoopSoft\\BackendCoopSoft.csproj": {}
+    "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj": {}
   },
   "projects": {
-    "E:\\CooperativaSoft\\Avance01112025\\Nuevos\\Nuevos\\BackendCoopSoft\\BackendCoopSoft\\BackendCoopSoft.csproj": {
+    "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\CooperativaSoft\\Avance01112025\\Nuevos\\Nuevos\\BackendCoopSoft\\BackendCoopSoft\\BackendCoopSoft.csproj",
+        "projectUniqueName": "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
         "projectName": "BackendCoopSoft",
-        "projectPath": "E:\\CooperativaSoft\\Avance01112025\\Nuevos\\Nuevos\\BackendCoopSoft\\BackendCoopSoft\\BackendCoopSoft.csproj",
+        "projectPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
         "packagesPath": "C:\\Users\\maude\\.nuget\\packages\\",
-        "outputPath": "E:\\CooperativaSoft\\Avance01112025\\Nuevos\\Nuevos\\BackendCoopSoft\\BackendCoopSoft\\obj\\",
+        "outputPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

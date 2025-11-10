@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "7gpJAIKIEAE=",
+  "dgSpecHash": "fK21Ib1HpPg=",
   "success": true,
-  "projectFilePath": "E:\\CooperativaSoft\\Avance01112025\\Nuevos\\Nuevos\\BackendCoopSoft\\BackendCoopSoft\\BackendCoopSoft.csproj",
+  "projectFilePath": "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\maude\\.nuget\\packages\\automapper\\12.0.1\\automapper.12.0.1.nupkg.sha512",
     "C:\\Users\\maude\\.nuget\\packages\\automapper.extensions.microsoft.dependencyinjection\\12.0.1\\automapper.extensions.microsoft.dependencyinjection.12.0.1.nupkg.sha512",

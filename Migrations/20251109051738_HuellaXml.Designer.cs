@@ -4,6 +4,7 @@ using BackendCoopSoft.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BackendCoopSoft.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251109051738_HuellaXml")]
+    partial class HuellaXml
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -572,11 +575,6 @@ namespace BackendCoopSoft.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdHorario"));
 
-                    b.Property<string>("DiaSemana")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)")
-                        .HasColumnName("dia_semana");
-
                     b.Property<TimeSpan>("HoraEntrada")
                         .HasColumnType("time")
                         .HasColumnName("hora_entrada");
@@ -585,13 +583,19 @@ namespace BackendCoopSoft.Migrations
                         .HasColumnType("time")
                         .HasColumnName("hora_salida");
 
+                    b.Property<int>("IdDiaSemana")
+                        .HasColumnType("int")
+                        .HasColumnName("id_dia_semana");
+
                     b.Property<int>("IdTrabajador")
                         .HasColumnType("int")
                         .HasColumnName("id_trabajador");
 
                     b.HasKey("IdHorario");
 
-                    b.HasIndex("IdTrabajador", "DiaSemana")
+                    b.HasIndex("IdDiaSemana");
+
+                    b.HasIndex("IdTrabajador", "IdDiaSemana")
                         .IsUnique();
 
                     b.ToTable("Horario");
@@ -1305,11 +1309,19 @@ namespace BackendCoopSoft.Migrations
 
             modelBuilder.Entity("BackendCoopSoft.Models.Horario", b =>
                 {
+                    b.HasOne("BackendCoopSoft.Models.Clasificador", "DiaSemana")
+                        .WithMany("Horarios")
+                        .HasForeignKey("IdDiaSemana")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("BackendCoopSoft.Models.Trabajador", "Trabajador")
                         .WithMany("Horarios")
                         .HasForeignKey("IdTrabajador")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("DiaSemana");
 
                     b.Navigation("Trabajador");
                 });
@@ -1471,6 +1483,8 @@ namespace BackendCoopSoft.Migrations
                     b.Navigation("EstadosSolicitud");
 
                     b.Navigation("Faltas");
+
+                    b.Navigation("Horarios");
 
                     b.Navigation("MetodosCalculoConcepto");
 

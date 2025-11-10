@@ -33,9 +33,6 @@ public class Clasificador
     [InverseProperty(nameof(Solicitud.EstadoSolicitud))]
     public ICollection<Solicitud> EstadosSolicitud { get; set; } = new List<Solicitud>();
 
-    // 1:N Horario
-    public ICollection<Horario> Horarios { get; set; } = new List<Horario>();
-
     // 1:N Persona
     public ICollection<Persona> Personas { get; set; } = new List<Persona>();
 

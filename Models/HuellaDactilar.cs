@@ -17,8 +17,8 @@ public class HuellaDactilar
     public int IdPersona { get; set; }
 
     [Required]
-    [Column("huella", TypeName = "varbinary(max)")]
-    public byte[] Huella { get; set; } = Array.Empty<byte>();
+    [Column("huella", TypeName = "varchar(max)")]
+    public string? Huella { get; set; }
 
     // 🔗 Propiedad de navegación
     [ForeignKey(nameof(IdPersona))]
