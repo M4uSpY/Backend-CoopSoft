@@ -1,0 +1,781 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "BackendCoopSoft",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/Auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginSolicitudDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginSolicitudDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginSolicitudDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginSolicitudDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Generos": {
+      "get": {
+        "tags": [
+          "Generos"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Huellas/registrar": {
+      "post": {
+        "tags": [
+          "Huellas"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/HuellaDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HuellaDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HuellaDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/HuellaDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Huellas/listar": {
+      "get": {
+        "tags": [
+          "Huellas"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Huellas/obtener/{idPersona}": {
+      "get": {
+        "tags": [
+          "Huellas"
+        ],
+        "parameters": [
+          {
+            "name": "idPersona",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Nacionalidades": {
+      "get": {
+        "tags": [
+          "Nacionalidades"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Personas": {
+      "get": {
+        "tags": [
+          "Personas"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Personas"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Personas/{id}": {
+      "get": {
+        "tags": [
+          "Personas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Personas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCrearDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Personas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Personas/{id}/huella": {
+      "get": {
+        "tags": [
+          "Personas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Roles": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Trabajadores": {
+      "get": {
+        "tags": [
+          "Trabajadores"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Trabajadores"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Trabajadores/{id}": {
+      "get": {
+        "tags": [
+          "Trabajadores"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Trabajadores"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Trabajadores"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrabajadorCrearDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Usuarios": {
+      "get": {
+        "tags": [
+          "Usuarios"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Usuarios"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Usuarios/{id}": {
+      "get": {
+        "tags": [
+          "Usuarios"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Usuarios"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrearDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Usuarios"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HorarioDTO": {
+        "type": "object",
+        "properties": {
+          "diaSemana": {
+            "type": "string",
+            "nullable": true
+          },
+          "horaEntrada": {
+            "type": "string",
+            "format": "date-span"
+          },
+          "horaSalida": {
+            "type": "string",
+            "format": "date-span"
+          }
+        },
+        "additionalProperties": false
+      },
+      "HuellaDTO": {
+        "type": "object",
+        "properties": {
+          "idPersona": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nombreUsuario": {
+            "type": "string",
+            "nullable": true
+          },
+          "templateXml": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginSolicitudDTO": {
+        "required": [
+          "nombreUsuario",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "nombreUsuario": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PersonaCrearDTO": {
+        "required": [
+          "apellidoMaterno",
+          "apellidoPaterno",
+          "carnetIdentidad",
+          "direccion",
+          "email",
+          "fechaNacimiento",
+          "genero",
+          "idNacionalidad",
+          "primerNombre",
+          "telefono"
+        ],
+        "type": "object",
+        "properties": {
+          "idNacionalidad": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "primerNombre": {
+            "maxLength": 50,
+            "minLength": 0,
+            "type": "string"
+          },
+          "segundoNombre": {
+            "maxLength": 50,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "apellidoPaterno": {
+            "maxLength": 50,
+            "minLength": 0,
+            "type": "string"
+          },
+          "apellidoMaterno": {
+            "maxLength": 50,
+            "minLength": 0,
+            "type": "string"
+          },
+          "carnetIdentidad": {
+            "maxLength": 20,
+            "minLength": 0,
+            "type": "string"
+          },
+          "fechaNacimiento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "genero": {
+            "type": "boolean"
+          },
+          "direccion": {
+            "maxLength": 250,
+            "minLength": 0,
+            "type": "string"
+          },
+          "telefono": {
+            "maxLength": 20,
+            "minLength": 0,
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "foto": {
+            "type": "string",
+            "format": "byte",
+            "nullable": true
+          },
+          "huella": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrabajadorCrearDTO": {
+        "required": [
+          "fechaIngreso",
+          "haberBasico",
+          "idPersona"
+        ],
+        "type": "object",
+        "properties": {
+          "idPersona": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "haberBasico": {
+            "type": "number",
+            "format": "double"
+          },
+          "fechaIngreso": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idCargo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "horarios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorarioDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UsuarioCrearDTO": {
+        "required": [
+          "idPersona",
+          "idRol",
+          "nombreUsuario",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "idPersona": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nombreUsuario": {
+            "maxLength": 50,
+            "minLength": 0,
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 120,
+            "minLength": 0,
+            "type": "string"
+          },
+          "idRol": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

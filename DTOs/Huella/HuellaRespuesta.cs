@@ -9,5 +9,8 @@ public class HuellaRespuesta
     public string SegundoNombre { get; set; } = string.Empty;
     public string ApellidoPaterno { get; set; } = string.Empty;
     public string ApellidoMaterno { get; set; } = string.Empty;
+    public string CI { get; set; } = string.Empty;
+    public string Cargo { get; set; } = string.Empty;
+    public byte[]? Foto { get; set; }
     public string? TemplateXml { get; set; } = string.Empty;
 }

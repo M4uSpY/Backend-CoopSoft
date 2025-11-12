@@ -5264,11 +5264,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
+      "projectUniqueName": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Backend\\BackendCoopSoft.csproj",
       "projectName": "BackendCoopSoft",
-      "projectPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
+      "projectPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Backend\\BackendCoopSoft.csproj",
       "packagesPath": "C:\\Users\\maude\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\AvProject\\Backend\\Backend-CoopSoft\\obj\\",
+      "outputPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Backend\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -5367,7 +5367,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

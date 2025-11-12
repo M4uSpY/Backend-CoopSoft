@@ -26,6 +26,7 @@ namespace BackendCoopSoft.Controllers
         {
             var trabajadores = await _db.Trabajadores
                 .Include(t => t.Persona)
+                .ThenInclude(p => p.Nacionalidad)
                 .Include(t => t.Cargo)
                 .ThenInclude(c => c.Oficina)
                 .Include(t => t.Horarios)
@@ -41,6 +42,7 @@ namespace BackendCoopSoft.Controllers
         {
             var trabajador = await _db.Trabajadores
                 .Include(t => t.Persona)
+                .ThenInclude(p => p.Nacionalidad)
                 .Include(t => t.Cargo)
                 .ThenInclude(c => c.Oficina)
                 .Include(t => t.Horarios)

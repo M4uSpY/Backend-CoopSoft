@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Nuevo perfil",
+    "Projects": [
+      {
+        "Path": "BackendCoopSoft.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "..\\Frontend\\ClientCoopSoft\\ClientCoopSoft.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

@@ -44,6 +44,9 @@ namespace BackendCoopSoft.Controllers
                     SegundoNombre = h.Persona.SegundoNombre ?? string.Empty,
                     ApellidoPaterno = h.Persona.ApellidoPaterno,
                     ApellidoMaterno = h.Persona.ApellidoMaterno,
+                    CI = h.Persona.CarnetIdentidad,
+                    Cargo = h.Persona.Usuario.Rol.NombreRol,
+                    Foto = h.Persona.Foto,
                     TemplateXml = h.Huella
                 }).ToListAsync();
 
