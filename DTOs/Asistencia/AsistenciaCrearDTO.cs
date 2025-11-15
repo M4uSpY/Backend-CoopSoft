@@ -8,5 +8,4 @@ public class AsistenciaCrearDTO
     public DateTime Fecha { get; set; }
     public TimeSpan Hora { get; set; }
     public bool esEntrada { get; set; }
-    public int IdOficina { get; set; }
 }

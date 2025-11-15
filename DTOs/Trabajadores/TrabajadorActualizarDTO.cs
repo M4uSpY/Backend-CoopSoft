@@ -8,6 +8,8 @@ public class TrabajadorActualizarDTO
     [Required]
     public int IdTrabajador { get; set; }
     [Required]
+    public int IdPersona { get; set; }
+    [Required]
     public decimal HaberBasico { get; set; }
     [Required]
     public DateTime FechaIngreso { get; set; }

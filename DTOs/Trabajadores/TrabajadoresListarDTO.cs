@@ -15,6 +15,9 @@ public class TrabajadoresListarDTO
     public string Cargo { get; set; } = string.Empty;
     public string NombreOficina { get; set; } = string.Empty;
     public bool Activo { get; set; }
+    public int IdPersona { get; set; }
+    public decimal HaberBasico { get; set; }
+    public DateTime FechaIngreso { get; set; }
 
     public List<HorarioDTO> Horarios { get; set; } = new List<HorarioDTO>();
 }

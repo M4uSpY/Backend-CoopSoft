@@ -10,6 +10,6 @@ public class AsistenciaListaDTO
     public string Cargo { get; set; } = string.Empty;
     public DateTime Fecha { get; set; }
     public TimeSpan Hora { get; set; }
-    public int Oficina { get; set; }
-    public string Tipo { get; set; } = string.Empty;
+    public string Oficina { get; set; } = string.Empty;
+    public bool EsEntrada { get; set; } 
 }
