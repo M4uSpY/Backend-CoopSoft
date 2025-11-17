@@ -10,5 +10,5 @@ public class ContratoActualizarDTO
     public int IdPeriodoPago { get; set; } // Clasificador
     public DateTime FechaInicio { get; set; }
     public DateTime? FechaFin { get; set; }
-    public string? UrlArchivo { get; set; } // para DESCARGAR CONTRATO
+    public byte[] ArchivoPdf { get; set; } = Array.Empty<byte>();
 }

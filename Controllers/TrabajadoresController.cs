@@ -30,6 +30,7 @@ namespace BackendCoopSoft.Controllers
                 .Include(t => t.Cargo)
                 .ThenInclude(c => c.Oficina)
                 .Include(t => t.Horarios)
+                .Include(t => t.Contratos)
                 .ToListAsync();
 
             var listTrabajadores = _mapper.Map<List<TrabajadoresListarDTO>>(trabajadores);
@@ -46,6 +47,7 @@ namespace BackendCoopSoft.Controllers
                 .Include(t => t.Cargo)
                 .ThenInclude(c => c.Oficina)
                 .Include(t => t.Horarios)
+                .Include(t => t.Contratos)
                 .FirstOrDefaultAsync(t => t.IdTrabajador == id);
 
             if (trabajador is null)

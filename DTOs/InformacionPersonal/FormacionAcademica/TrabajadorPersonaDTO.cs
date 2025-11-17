@@ -1,4 +1,5 @@
 using System;
+using BackendCoopSoft.DTOs.InformacionPersonal.Contratacion;
 using BackendCoopSoft.DTOs.InformacionPersonal.FormacionAcademica;
 using BackendCoopSoft.DTOs.InformacionPersonal.FormacionAcademica.Capacitaciones;
 

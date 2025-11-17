@@ -1,4 +1,3 @@
-using AutoMapper;
 using BackendCoopSoft.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,25 +7,25 @@ namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class NacionalidadesController : ControllerBase
+    public class PeriodosPagoController : ControllerBase
     {
         private readonly AppDbContext _db;
 
-        public NacionalidadesController(AppDbContext db)
+        public PeriodosPagoController(AppDbContext db)
         {
             _db = db;
         }
 
         [HttpGet]
-        public async Task<IActionResult> ObtenerNacionalidades()
+        public async Task<IActionResult> ObtenerPeriodosPago()
         {
-            var nacionalidades = await _db.Clasificadores.Where(c => c.Categoria == "nacionalidad").Select(c => new
+            var periodosPago = await _db.Clasificadores.Where(c => c.Categoria == "TipoPeriodoPago").Select(c => new
             {
                 c.IdClasificador,
                 c.ValorCategoria,
                 c.Descripcion
             }).ToListAsync();
-            return Ok(nacionalidades);
+            return Ok(periodosPago);
         }
     }
 }

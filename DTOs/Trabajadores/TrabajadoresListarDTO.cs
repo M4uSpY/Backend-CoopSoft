@@ -1,5 +1,6 @@
 using System;
 using BackendCoopSoft.DTOs.Extras;
+using BackendCoopSoft.DTOs.InformacionPersonal.Contratacion;
 
 namespace BackendCoopSoft.DTOs.Trabajadores;
 

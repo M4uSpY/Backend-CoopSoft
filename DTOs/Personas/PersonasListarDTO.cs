@@ -1,5 +1,6 @@
 using System;
 using BackendCoopSoft.DTOs.InformacionPersonal;
+using BackendCoopSoft.DTOs.InformacionPersonal.Contratacion;
 using BackendCoopSoft.Models;
 
 namespace BackendCoopSoft.DTOs.Personas;
@@ -20,4 +21,5 @@ public class PersonasListarDTO
     public string Email { get; set; } = string.Empty;
     public byte[]? Foto { get; set; }
     public TrabajadorPersonaDTO? Trabajador { get; set; }
+    
 }
