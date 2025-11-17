@@ -1,20 +1,7 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Backend\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{324BF28B-9D6F-098E-CFFB-909E5F8F987A}|..\\Frontend\\ClientCoopSoft\\ClientCoopSoft.csproj|c:\\users\\maude\\onedrive\\escritorio\\software\\frontend\\clientcoopsoft\\views\\personasview.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{324BF28B-9D6F-098E-CFFB-909E5F8F987A}|..\\Frontend\\ClientCoopSoft\\ClientCoopSoft.csproj|c:\\users\\maude\\onedrive\\escritorio\\software\\frontend\\clientcoopsoft\\views\\usuariosview.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{324BF28B-9D6F-098E-CFFB-909E5F8F987A}|..\\Frontend\\ClientCoopSoft\\ClientCoopSoft.csproj|c:\\users\\maude\\onedrive\\escritorio\\software\\frontend\\clientcoopsoft\\views\\personas\\editarpersonaview.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{324BF28B-9D6F-098E-CFFB-909E5F8F987A}|..\\Frontend\\ClientCoopSoft\\ClientCoopSoft.csproj|c:\\users\\maude\\onedrive\\escritorio\\software\\frontend\\clientcoopsoft\\views\\informacionpersonal\\informacionpersonalview.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    }
-  ],
+  "WorkspaceRootPath": "C:\\Users\\maude\\OneDrive\\Escritorio\\BACK\\",
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -22,7 +9,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": -1,
           "Children": [
             {
               "$type": "Bookmark",
@@ -35,51 +22,6 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "PersonasView.xaml",
-              "DocumentMoniker": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\PersonasView.xaml",
-              "RelativeDocumentMoniker": "..\\Frontend\\ClientCoopSoft\\Views\\PersonasView.xaml",
-              "ToolTip": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\PersonasView.xaml",
-              "RelativeToolTip": "..\\Frontend\\ClientCoopSoft\\Views\\PersonasView.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-11-11T05:58:32.305Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "UsuariosView.xaml",
-              "DocumentMoniker": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\UsuariosView.xaml",
-              "RelativeDocumentMoniker": "..\\Frontend\\ClientCoopSoft\\Views\\UsuariosView.xaml",
-              "ToolTip": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\UsuariosView.xaml",
-              "RelativeToolTip": "..\\Frontend\\ClientCoopSoft\\Views\\UsuariosView.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-11-11T05:53:13.591Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "EditarPersonaView.xaml",
-              "DocumentMoniker": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\Personas\\EditarPersonaView.xaml",
-              "RelativeDocumentMoniker": "..\\Frontend\\ClientCoopSoft\\Views\\Personas\\EditarPersonaView.xaml",
-              "ToolTip": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\Personas\\EditarPersonaView.xaml",
-              "RelativeToolTip": "..\\Frontend\\ClientCoopSoft\\Views\\Personas\\EditarPersonaView.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-11-11T05:50:56.599Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "InformacionPersonalView.xaml",
-              "DocumentMoniker": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\InformacionPersonal\\InformacionPersonalView.xaml",
-              "RelativeDocumentMoniker": "..\\Frontend\\ClientCoopSoft\\Views\\InformacionPersonal\\InformacionPersonalView.xaml",
-              "ToolTip": "C:\\Users\\maude\\OneDrive\\Escritorio\\Software\\Frontend\\ClientCoopSoft\\Views\\InformacionPersonal\\InformacionPersonalView.xaml",
-              "RelativeToolTip": "..\\Frontend\\ClientCoopSoft\\Views\\InformacionPersonal\\InformacionPersonalView.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-11-10T21:58:06.868Z"
             }
           ]
         }

@@ -19,6 +19,7 @@ namespace BackendCoopSoft.Controllers
             _db = db;
             _mapper = mapper;
         }
+        [HttpGet]
         public async Task<IActionResult> ObtenerAsistencias()
         {
             var asistencias = await _db.Asistencias

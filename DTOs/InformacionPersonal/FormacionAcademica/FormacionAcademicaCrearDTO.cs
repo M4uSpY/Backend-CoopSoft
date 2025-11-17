@@ -1,16 +1,15 @@
 using System;
-using System.ComponentModel.DataAnnotations;
 
 namespace BackendCoopSoft.DTOs.InformacionPersonal.FormacionAcademica;
 
-public class FormAcademicaDTO
+public class FormacionAcademicaCrearDTO
 {
-    [Required, StringLength(50)]
+    public int IdTrabajador { get; set; }
+
     public string NivelEstudios { get; set; } = string.Empty;
-    [Required, StringLength(100)]
     public string TituloObtenido { get; set; } = string.Empty;
-    [Required, StringLength(100)]
     public string Institucion { get; set; } = string.Empty;
     public int AnioGraduacion { get; set; }
-
+    public string? NroRegistroProfesional { get; set; }
 }
+

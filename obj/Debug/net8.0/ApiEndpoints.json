@@ -1,5 +1,15 @@
 [
   {
+    "ContainingType": "BackendCoopSoft.Controllers.AsistenciasController",
+    "Method": "ObtenerAsistencias",
+    "RelativePath": "api/Asistencias",
+    "HttpMethod": "",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "BackendCoopSoft.Controllers.AuthController",
     "Method": "Login",
     "RelativePath": "api/Auth/login",
@@ -13,6 +23,16 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BackendCoopSoft.Controllers.CargosController",
+    "Method": "ObtenerCargos",
+    "RelativePath": "api/Cargos",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {
@@ -338,6 +358,16 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BackendCoopSoft.Controllers.VacacionesPermisosController",
+    "Method": "ObtenerSolicitudesCalendario",
+    "RelativePath": "api/VacacionesPermisos/SolicitudesCalendario",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   }
 ]

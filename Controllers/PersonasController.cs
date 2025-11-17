@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
-    [Authorize(Roles = "Administrador,Casual")]
+    // [Authorize(Roles = "Administrador,Casual")]
     [ApiController]
     public class PersonasController : ControllerBase
     {
@@ -31,7 +31,14 @@ namespace BackendCoopSoft.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> ObtenerPersonaId(int id)
         {
-            var persona = await _db.Personas.Include(p => p.Nacionalidad).FirstOrDefaultAsync(p => p.IdPersona == id);
+            var persona = await _db.Personas
+            .Include(p => p.Nacionalidad)
+            .Include(p => p.Trabajador!)
+                .ThenInclude(t => t.FormacionesAcademicas)
+            .Include(p => p.Trabajador!)
+                .ThenInclude(t => t.Capacitaciones)
+                .FirstOrDefaultAsync(p => p.IdPersona == id);
+            
             if (persona is null)
             {
                 return NotFound("Persona no encontrada");

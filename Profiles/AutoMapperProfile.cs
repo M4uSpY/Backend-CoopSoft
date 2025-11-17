@@ -3,6 +3,9 @@ using AutoMapper;
 using BackendCoopSoft.DTOs;
 using BackendCoopSoft.DTOs.Asistencia;
 using BackendCoopSoft.DTOs.Extras;
+using BackendCoopSoft.DTOs.InformacionPersonal;
+using BackendCoopSoft.DTOs.InformacionPersonal.FormacionAcademica;
+using BackendCoopSoft.DTOs.InformacionPersonal.FormacionAcademica.Capacitaciones;
 using BackendCoopSoft.DTOs.Personas;
 using BackendCoopSoft.DTOs.Trabajadores;
 using BackendCoopSoft.DTOs.Usuarios;
@@ -18,8 +21,43 @@ public class AutoMapperProfile : Profile
         CreateMap<Usuario, UsuarioListarDTO>().ForMember(dest => dest.NombreCompleto, opt => opt.MapFrom(src => src.Persona.ApellidoPaterno + " " + src.Persona.ApellidoMaterno + " " + src.Persona.SegundoNombre + " " + src.Persona.PrimerNombre)).ForMember(dest => dest.Rol, opt => opt.MapFrom(src => src.Rol.NombreRol)).ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Persona.CarnetIdentidad)).ForMember(dest => dest.DescripcionRol, opt => opt.MapFrom(src => src.Rol.Descripcion)).ForMember(dest => dest.Genero, opt => opt.MapFrom(src => src.Persona.Genero)).ForMember(dest => dest.Activo, opt => opt.MapFrom(src => src.EstadoUsuario)).ForMember(dest => dest.IdPersona, opt => opt.MapFrom(src => src.Persona.IdPersona));
         CreateMap<UsuarioCrearDTO, Usuario>();
 
-        CreateMap<Persona, PersonasListarDTO>();
+
         CreateMap<PersonaCrearDTO, Persona>().ReverseMap();
+        CreateMap<Persona, PersonasListarDTO>();
+
+
+        CreateMap<Trabajador, TrabajadorPersonaDTO>()
+            .ForMember(
+                dest => dest.TituloObtenido,
+                opt => opt.MapFrom(src =>
+                    src.FormacionesAcademicas
+                        .OrderByDescending(f => f.AnioGraduacion)
+                        .Select(f => f.TituloObtenido)
+                        .FirstOrDefault()
+                )
+            )
+            .ForMember(
+                dest => dest.Formaciones,
+                opt => opt.MapFrom(src => src.FormacionesAcademicas)
+            )
+            .ForMember(
+                dest => dest.Capacitaciones,
+                opt => opt.MapFrom(src => src.Capacitaciones)
+            );
+
+        CreateMap<FormacionAcademica, FormacionAcademicaResumenDTO>();
+        CreateMap<FormacionAcademica, FormacionAcademicaEditarDTO>();
+        CreateMap<FormacionAcademicaCrearDTO, FormacionAcademica>().ForMember(d => d.IdFormacion, opt => opt.Ignore());
+        CreateMap<FormacionAcademicaEditarDTO, FormacionAcademica>().ForMember(d => d.IdFormacion, opt => opt.Ignore()); 
+
+
+        CreateMap<Capacitacion, CapacitacionResumenDTO>();
+        CreateMap<Capacitacion, CapacitacionEditarDTO>();
+        CreateMap<CapacitacionCrearDTO, Capacitacion>().ForMember(d => d.IdCapacitacion, opt => opt.Ignore());
+        CreateMap<CapacitacionEditarDTO, Capacitacion>().ForMember(d => d.IdCapacitacion, opt => opt.Ignore()); 
+
+
+
 
         CreateMap<TrabajadorCrearDTO, Trabajador>();
         CreateMap<HorarioDTO, Horario>();
