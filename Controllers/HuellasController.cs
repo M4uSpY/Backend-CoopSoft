@@ -37,18 +37,21 @@ namespace BackendCoopSoft.Controllers
         public async Task<IActionResult> Listar()
         {
             var lista = await _db.HuellasDactilares
-                .Select(h => new HuellaRespuesta
-                {
-                    IdPersona = h.IdPersona,
-                    PrimerNombre = h.Persona.PrimerNombre,
-                    SegundoNombre = h.Persona.SegundoNombre ?? string.Empty,
-                    ApellidoPaterno = h.Persona.ApellidoPaterno,
-                    ApellidoMaterno = h.Persona.ApellidoMaterno,
-                    CI = h.Persona.CarnetIdentidad,
-                    Cargo = h.Persona.Usuario.Rol.NombreRol,
-                    Foto = h.Persona.Foto,
-                    TemplateXml = h.Huella
-                }).ToListAsync();
+                        .Where(h => h.Persona.Trabajador != null)  
+                        .Select(h => new HuellaRespuesta
+                        {
+                            IdPersona = h.IdPersona,
+                            IdTrabajador = h.Persona.Trabajador!.IdTrabajador,
+                            PrimerNombre = h.Persona.PrimerNombre,
+                            SegundoNombre = h.Persona.SegundoNombre ?? string.Empty,
+                            ApellidoPaterno = h.Persona.ApellidoPaterno,
+                            ApellidoMaterno = h.Persona.ApellidoMaterno,
+                            CI = h.Persona.CarnetIdentidad,
+                            Cargo = h.Persona.Usuario.Rol.NombreRol,
+                            Foto = h.Persona.Foto,
+                            TemplateXml = h.Huella
+                        }).ToListAsync();
+
 
             return Ok(lista);
         }

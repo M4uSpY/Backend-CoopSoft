@@ -57,6 +57,8 @@ public class AutoMapperProfile : Profile
         CreateMap<FormacionAcademicaCrearDTO, FormacionAcademica>().ForMember(d => d.IdFormacion, opt => opt.Ignore());
         CreateMap<FormacionAcademicaEditarDTO, FormacionAcademica>().ForMember(d => d.IdFormacion, opt => opt.Ignore());
 
+        CreateMap<AsistenciaCrearDTO, Asistencia>();
+
 
         CreateMap<Capacitacion, CapacitacionResumenDTO>();
         CreateMap<Capacitacion, CapacitacionEditarDTO>();

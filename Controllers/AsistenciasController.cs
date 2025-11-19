@@ -1,6 +1,8 @@
 using AutoMapper;
+using AutoMapper.Internal.Mappers;
 using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs.Asistencia;
+using BackendCoopSoft.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +34,16 @@ namespace BackendCoopSoft.Controllers
 
             var listaAsistencias = _mapper.Map<List<AsistenciaListaDTO>>(asistencias);
             return Ok(listaAsistencias);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RegistrarAsistencia([FromBody] AsistenciaCrearDTO dto)
+        {
+            var asistencia = _mapper.Map<Asistencia>(dto);
+            _db.Asistencias.Add(asistencia);
+            await _db.SaveChangesAsync();
+
+            return Ok("Asistencia registrada correctamente");
         }
 
     }
