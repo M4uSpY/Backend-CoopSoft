@@ -80,6 +80,8 @@ public class AutoMapperProfile : Profile
 
         CreateMap<Asistencia, AsistenciaListaDTO>().ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Trabajador.Persona.CarnetIdentidad)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Trabajador.Persona.ApellidoPaterno + " " + src.Trabajador.Persona.ApellidoMaterno + " " + src.Trabajador.Persona.PrimerNombre)).ForMember(dest => dest.Cargo, opt => opt.MapFrom(src => src.Trabajador.Cargo.NombreCargo)).ForMember(dest => dest.Oficina, opt => opt.MapFrom(src => src.Trabajador.Cargo.Oficina.Nombre)).ForMember(dest => dest.EsEntrada, opt => opt.MapFrom(src => src.EsEntrada));
 
+        CreateMap<LogAcceso, LogsAccesoDTO>().ForMember(dest => dest.NombreUsuario, opt => opt.MapFrom(src => src.Usuario.NombreUsuario)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Usuario.Persona.ApellidoPaterno + " " + src.Usuario.Persona.ApellidoMaterno + " " + src.Usuario.Persona.SegundoNombre + " "+src.Usuario.Persona.PrimerNombre));
+
         CreateMap<Rol, RolDTO>();
         CreateMap<Cargo, CargoDTO>();
     }
