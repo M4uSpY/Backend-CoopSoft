@@ -18,6 +18,9 @@ public class AutoMapperProfile : Profile
 {
     public AutoMapperProfile()
     {
+        CreateMap<LogAcceso, LogsAccesoDTO>().ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Usuario.Persona.ApellidoPaterno + " " + src.Usuario.Persona.ApellidoMaterno + " " + src.Usuario.Persona.SegundoNombre + " " + src.Usuario.Persona.PrimerNombre)).ForMember(dest => dest.NombreUsuario, opt => opt.MapFrom(src => src.Usuario.NombreUsuario)).ForMember(dest => dest.FechaLogin, opt => opt.MapFrom(src => src.FechaLogin)).ForMember(dest => dest.HoraLogin, opt => opt.MapFrom(src => src.HoraLogin)).ForMember(dest => dest.FechaLogout, opt => opt.MapFrom(src => src.FechaLogout)).ForMember(dest => dest.HoraLogout, opt => opt.MapFrom(src => src.HoraLogout));
+
+
         // indicamos que queremos convertir el objeto Usuario a un UserDto
         CreateMap<Usuario, UsuarioListarDTO>().ForMember(dest => dest.NombreCompleto, opt => opt.MapFrom(src => src.Persona.ApellidoPaterno + " " + src.Persona.ApellidoMaterno + " " + src.Persona.SegundoNombre + " " + src.Persona.PrimerNombre)).ForMember(dest => dest.Rol, opt => opt.MapFrom(src => src.Rol.NombreRol)).ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Persona.CarnetIdentidad)).ForMember(dest => dest.DescripcionRol, opt => opt.MapFrom(src => src.Rol.Descripcion)).ForMember(dest => dest.Genero, opt => opt.MapFrom(src => src.Persona.Genero)).ForMember(dest => dest.Activo, opt => opt.MapFrom(src => src.EstadoUsuario)).ForMember(dest => dest.IdPersona, opt => opt.MapFrom(src => src.Persona.IdPersona));
         CreateMap<UsuarioCrearDTO, Usuario>();
