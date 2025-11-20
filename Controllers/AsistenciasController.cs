@@ -15,8 +15,9 @@ namespace BackendCoopSoft.Controllers
         private readonly AppDbContext _db;
         private readonly IMapper _mapper;
 
-        // AJUSTA ESTE ID según la fila real en Clasificador (tipo falta)
-        private const int ID_TIPO_FALTA_INASISTENCIA = 1;
+        // 🔥 PARA PRUEBAS: 4 minutos
+        // En producción cámbialo a: 480 (8 horas)
+        private const int MINUTOS_MINIMOS_JORNADA = 4;
 
         public AsistenciasController(AppDbContext db, IMapper mapper)
         {
@@ -24,20 +25,10 @@ namespace BackendCoopSoft.Controllers
             _mapper = mapper;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> ObtenerAsistencias()
-        {
-            var asistencias = await _db.Asistencias
-                .Include(a => a.Trabajador)
-                    .ThenInclude(t => t.Persona)
-                .Include(a => a.Trabajador)
-                    .ThenInclude(t => t.Cargo)
-                        .ThenInclude(c => c.Oficina)
-                .ToListAsync();
 
-            var listaAsistencias = _mapper.Map<List<AsistenciaListaDTO>>(asistencias);
-            return Ok(listaAsistencias);
-        }
+        // ====================================================================
+        // =====================  MÉTODO COMPLETO DE ASISTENCIA  ==============
+        // ====================================================================
 
         [HttpPost]
         public async Task<IActionResult> RegistrarAsistencia([FromBody] AsistenciaCrearDTO dto)
@@ -52,11 +43,12 @@ namespace BackendCoopSoft.Controllers
                 return NotFound(new AsistenciaRegistrarResultadoDTO
                 {
                     Registrado = false,
+                    TipoMarcacion = "EN_PROCESO",
                     Mensaje = "Trabajador no encontrado."
                 });
             }
 
-            // 2) Día de la semana actual en español (según la fecha enviada)
+            // 2) Obtener el horario de hoy
             var cultura = new CultureInfo("es-ES");
             string diaSemanaActual = dto.Fecha.ToString("dddd", cultura);
             diaSemanaActual = char.ToUpper(diaSemanaActual[0]) + diaSemanaActual.Substring(1);
@@ -66,114 +58,129 @@ namespace BackendCoopSoft.Controllers
 
             if (horarioHoy is null)
             {
-                // No tiene horario ese día → igual registramos, pero lo indicamos
-                var asistenciaSinHorario = _mapper.Map<Asistencia>(dto);
-                // Ignoramos dto.esEntrada y decidimos luego, pero aquí no hay horario
+                return Ok(new AsistenciaRegistrarResultadoDTO
+                {
+                    Registrado = false,
+                    TipoMarcacion = "EN_PROCESO",
+                    Mensaje = "El trabajador no tiene un horario definido para hoy."
+                });
+            }
 
-                _db.Asistencias.Add(asistenciaSinHorario);
+            // 3) Asistencias registradas hoy
+            var asistenciasHoy = await _db.Asistencias
+                .Where(a => a.IdTrabajador == dto.IdTrabajador && a.Fecha == dto.Fecha.Date)
+                .OrderBy(a => a.Hora)
+                .ToListAsync();
+
+            // Convertir a DateTime para cálculos
+            var horaMarcada = dto.Fecha.Date + dto.Hora;
+            var horaEntradaProgramada = dto.Fecha.Date + horarioHoy.HoraEntrada;
+
+            // ====================================================================
+            // ============================  PRIMERA MARCACIÓN  ===================
+            // ====================================================================
+            if (!asistenciasHoy.Any())
+            {
+                var rangoInicio = horaEntradaProgramada.AddMinutes(-30);
+                var rangoFin = horaEntradaProgramada.AddMinutes(30);
+
+                if (horaMarcada < rangoInicio || horaMarcada > rangoFin)
+                {
+                    return Ok(new AsistenciaRegistrarResultadoDTO
+                    {
+                        Registrado = false,
+                        TipoMarcacion = "EN_PROCESO",
+                        Mensaje = $"Marcación fuera del rango permitido para ENTRADA. " +
+                                  $"Debe marcar entre {rangoInicio:HH:mm} y {rangoFin:HH:mm}."
+                    });
+                }
+
+                // Registrar ENTRADA
+                var asistenciaEntrada = _mapper.Map<Asistencia>(dto);
+                asistenciaEntrada.Fecha = dto.Fecha.Date;
+                asistenciaEntrada.Hora = dto.Hora;
+                asistenciaEntrada.EsEntrada = true;
+
+                _db.Asistencias.Add(asistenciaEntrada);
                 await _db.SaveChangesAsync();
 
                 return Ok(new AsistenciaRegistrarResultadoDTO
                 {
                     Registrado = true,
-                    EsEntrada = true, // por defecto
-                    FaltaGenerada = false,
-                    Mensaje = "Asistencia registrada, pero el trabajador no tiene horario definido para hoy."
+                    TipoMarcacion = "ENTRADA",
+                    HoraEntrada = horaMarcada,
+                    Mensaje = $"Entrada registrada correctamente a las {horaMarcada:HH:mm}."
                 });
             }
 
-            // 3) Asistencias ya registradas hoy
-            var asistenciasHoy = await _db.Asistencias
-                .Where(a => a.IdTrabajador == dto.IdTrabajador && a.Fecha == dto.Fecha)
-                .OrderBy(a => a.Hora)
-                .ToListAsync();
 
-            bool esEntradaMarcacion;
+            // ====================================================================
+            // =================  YA HAY ENTRADA, VEAMOS SI ES SALIDA  ============
+            // ====================================================================
 
-            if (!asistenciasHoy.Any())
+            var entrada = asistenciasHoy.FirstOrDefault(a => a.EsEntrada);
+            var salida = asistenciasHoy.FirstOrDefault(a => !a.EsEntrada);
+
+            // Si ya existe salida → fin
+            if (entrada != null && salida != null)
             {
-                // Primera marcación del día → ENTRADA
-                esEntradaMarcacion = true;
-            }
-            else if (asistenciasHoy.Count == 1 && asistenciasHoy[0].EsEntrada)
-            {
-                // Ya tiene ENTRADA → esta es SALIDA
-                esEntradaMarcacion = false;
-            }
-            else
-            {
-                // Ya tiene ENTRADA y SALIDA (o más registros)
-                return BadRequest(new AsistenciaRegistrarResultadoDTO
+                var dtEntrada = dto.Fecha.Date + entrada.Hora;
+                var dtSalida = dto.Fecha.Date + salida.Hora;
+                var diff = dtSalida - dtEntrada;
+
+                return Ok(new AsistenciaRegistrarResultadoDTO
                 {
                     Registrado = false,
-                    EsEntrada = false,
-                    FaltaGenerada = false,
-                    Mensaje = "El trabajador ya tiene todas sus marcaciones registradas para hoy."
+                    TipoMarcacion = "SALIDA",
+                    HoraEntrada = dtEntrada,
+                    HoraSalida = dtSalida,
+                    HorasTrabajadas = $"{(int)diff.TotalHours:D2}:{diff.Minutes:D2}",
+                    Mensaje = "Ya registraste ENTRADA y SALIDA hoy."
                 });
             }
 
-            TimeSpan horaMarcada = dto.Hora;
-            TimeSpan horaEntrada = horarioHoy.HoraEntrada;
+            // Validamos tiempo mínimo
+            var horaEntradaReal = dto.Fecha.Date + entrada!.Hora;
+            var minimoSalida = horaEntradaReal.AddMinutes(MINUTOS_MINIMOS_JORNADA);
 
-            bool faltaGenerada = false;
-
-            // 4) Si es ENTRADA, revisar si pasó 30 minutos después de la hora de entrada
-            if (esEntradaMarcacion)
+            if (horaMarcada < minimoSalida)
             {
-                var limiteFalta = horaEntrada.Add(TimeSpan.FromMinutes(30));
+                var faltan = minimoSalida - horaMarcada;
 
-                if (horaMarcada > limiteFalta)
+                return Ok(new AsistenciaRegistrarResultadoDTO
                 {
-                    // Verificar si ya existe una falta hoy (por seguridad)
-                    bool yaTieneFalta = await _db.Faltas
-                        .AnyAsync(f => f.IdTrabajador == dto.IdTrabajador && f.Fecha == dto.Fecha);
-
-                    if (!yaTieneFalta)
-                    {
-                        var falta = new Falta
-                        {
-                            IdTrabajador = dto.IdTrabajador,
-                            IdTipoFalta = ID_TIPO_FALTA_INASISTENCIA, // AJUSTA ESTE VALOR
-                            Fecha = dto.Fecha,
-                            Descripcion = "Falta generada automáticamente por no registrar asistencia dentro de los 30 minutos posteriores a la hora de entrada.",
-                            ArchivoJustificativo = Array.Empty<byte>()
-                        };
-
-                        _db.Faltas.Add(falta);
-                        faltaGenerada = true;
-                    }
-                }
+                    Registrado = false,
+                    TipoMarcacion = "EN_PROCESO",
+                    HoraEntrada = horaEntradaReal,
+                    Mensaje = $"Aún no puede marcar SALIDA. " +
+                              $"Faltan {faltan.Minutes:D2} minuto(s) para completar la jornada."
+                });
             }
 
-            // 5) Registrar la asistencia
-            var asistencia = _mapper.Map<Asistencia>(dto);
-            asistencia.EsEntrada = esEntradaMarcacion; // ignoramos el dto.esEntrada que mande el cliente
+            // ====================================================================
+            // ==============================  SALIDA  =============================
+            // ====================================================================
+            var asistenciaSalida = _mapper.Map<Asistencia>(dto);
+            asistenciaSalida.Fecha = dto.Fecha.Date;
+            asistenciaSalida.Hora = dto.Hora;
+            asistenciaSalida.EsEntrada = false;
 
-            _db.Asistencias.Add(asistencia);
+            _db.Asistencias.Add(asistenciaSalida);
             await _db.SaveChangesAsync();
 
-            string mensaje;
+            var horasTrabajadas = horaMarcada - horaEntradaReal;
+            var horasFormateadas = $"{(int)horasTrabajadas.TotalHours:D2}:{horasTrabajadas.Minutes:D2}";
 
-            if (esEntradaMarcacion)
-            {
-                mensaje = "Entrada registrada correctamente.";
-                if (faltaGenerada)
-                    mensaje += " Se generó una falta por ingreso fuera del tiempo permitido.";
-            }
-            else
-            {
-                mensaje = "Salida registrado correctamente.";
-            }
-
-            var resultado = new AsistenciaRegistrarResultadoDTO
+            return Ok(new AsistenciaRegistrarResultadoDTO
             {
                 Registrado = true,
-                EsEntrada = esEntradaMarcacion,
-                FaltaGenerada = faltaGenerada,
-                Mensaje = mensaje
-            };
-
-            return Ok(resultado);
+                TipoMarcacion = "SALIDA",
+                HoraEntrada = horaEntradaReal,
+                HoraSalida = horaMarcada,
+                HorasTrabajadas = horasFormateadas,
+                Mensaje = $"Salida registrada a las {horaMarcada:HH:mm}. " +
+                          $"Tiempo trabajado: {horasFormateadas}."
+            });
         }
     }
 }
