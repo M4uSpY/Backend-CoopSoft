@@ -15,9 +15,16 @@ namespace BackendCoopSoft.Controllers
         private readonly AppDbContext _db;
         private readonly IMapper _mapper;
 
-        // 🔥 PARA PRUEBAS: 4 minutos
-        // En producción cámbialo a: 480 (8 horas)
+        // (SOLO PARA PRUEBAS - CAMBIARLO)
         private const int MINUTOS_MINIMOS_JORNADA = 4;
+
+        // (SOLO PARA PRUEBAS - CAMBIARLO)
+        private const int MINUTOS_TOLERANCIA_RETRASO = 2;
+
+        // IdTipoFalta para ATRASO (Clasificador)
+        private const int ID_TIPO_FALTA_ATRASO = 18;
+
+
 
         public AsistenciasController(AppDbContext db, IMapper mapper)
         {
@@ -25,10 +32,14 @@ namespace BackendCoopSoft.Controllers
             _mapper = mapper;
         }
 
-
-        // ====================================================================
-        // =====================  MÉTODO COMPLETO DE ASISTENCIA  ==============
-        // ====================================================================
+        [HttpGet]
+        public async Task<IActionResult> ObtenerAsistencias()
+        {
+            var asistencias = await _db.Asistencias.Include(a => a.Trabajador).ThenInclude(t => t.Persona).Include(a => a.Trabajador).ThenInclude(t => t.Cargo)
+                .ThenInclude(c => c.Oficina).ToListAsync();
+            var asistenciaDTO = _mapper.Map<List<AsistenciaListaDTO>>(asistencias);
+            return Ok(asistenciaDTO);
+        }
 
         [HttpPost]
         public async Task<IActionResult> RegistrarAsistencia([FromBody] AsistenciaCrearDTO dto)
@@ -95,6 +106,11 @@ namespace BackendCoopSoft.Controllers
                     });
                 }
 
+                // Cálculo de minutos de retraso respecto a la hora de entrada programada
+                var minutosRetraso = (horaMarcada - horaEntradaProgramada).TotalMinutes;
+
+                bool esAtrasado = minutosRetraso > MINUTOS_TOLERANCIA_RETRASO;
+
                 // Registrar ENTRADA
                 var asistenciaEntrada = _mapper.Map<Asistencia>(dto);
                 asistenciaEntrada.Fecha = dto.Fecha.Date;
@@ -102,17 +118,53 @@ namespace BackendCoopSoft.Controllers
                 asistenciaEntrada.EsEntrada = true;
 
                 _db.Asistencias.Add(asistenciaEntrada);
+
+                // Si está atrasado, generamos una FALTA (tipo ATRASO) si aún no existe hoy
+                if (esAtrasado)
+                {
+                    bool yaTieneFaltaHoy = await _db.Faltas
+                        .AnyAsync(f => f.IdTrabajador == dto.IdTrabajador
+                                    && f.Fecha == dto.Fecha.Date
+                                    && f.IdTipoFalta == ID_TIPO_FALTA_ATRASO);
+
+                    if (!yaTieneFaltaHoy)
+                    {
+                        var falta = new Falta
+                        {
+                            IdTrabajador = dto.IdTrabajador,
+                            IdTipoFalta = ID_TIPO_FALTA_ATRASO,
+                            Fecha = dto.Fecha.Date,
+                            Descripcion = $"Falta por atraso. Llegó {Math.Round(minutosRetraso)} minuto(s) tarde " +
+                                          $"respecto a la hora de entrada programada ({horaEntradaProgramada:HH:mm}).",
+                            ArchivoJustificativo = Array.Empty<byte>()
+                        };
+
+                        _db.Faltas.Add(falta);
+                    }
+                }
+
+                // Guardamos ENTRADA (+ posible falta) en un solo SaveChanges
                 await _db.SaveChangesAsync();
+
+                string mensajeEntrada;
+                if (esAtrasado)
+                {
+                    mensajeEntrada = $"Entrada registrada a las {horaMarcada:HH:mm}, con atraso de " +
+                                     $"{Math.Round(minutosRetraso)} minuto(s). Se generó una falta por atraso.";
+                }
+                else
+                {
+                    mensajeEntrada = $"Entrada registrada correctamente a las {horaMarcada:HH:mm}.";
+                }
 
                 return Ok(new AsistenciaRegistrarResultadoDTO
                 {
                     Registrado = true,
                     TipoMarcacion = "ENTRADA",
                     HoraEntrada = horaMarcada,
-                    Mensaje = $"Entrada registrada correctamente a las {horaMarcada:HH:mm}."
+                    Mensaje = mensajeEntrada
                 });
             }
-
 
             // ====================================================================
             // =================  YA HAY ENTRADA, VEAMOS SI ES SALIDA  ============

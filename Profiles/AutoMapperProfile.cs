@@ -3,6 +3,7 @@ using AutoMapper;
 using BackendCoopSoft.DTOs;
 using BackendCoopSoft.DTOs.Asistencia;
 using BackendCoopSoft.DTOs.Extras;
+using BackendCoopSoft.DTOs.Faltas;
 using BackendCoopSoft.DTOs.InformacionPersonal;
 using BackendCoopSoft.DTOs.InformacionPersonal.Contratacion;
 using BackendCoopSoft.DTOs.InformacionPersonal.FormacionAcademica;
@@ -79,6 +80,8 @@ public class AutoMapperProfile : Profile
         CreateMap<Trabajador, TrabajadoresListarDTO>().ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Persona.CarnetIdentidad)).ForMember(dest => dest.Apellidos, opt => opt.MapFrom(src => src.Persona.ApellidoPaterno + " " + src.Persona.ApellidoMaterno)).ForMember(dest => dest.Nombres, opt => opt.MapFrom(src => src.Persona.PrimerNombre + " " + src.Persona.SegundoNombre)).ForMember(dest => dest.IdNacionalidad, opt => opt.MapFrom(src => src.Persona.IdNacionalidad)).ForMember(dest => dest.Nacionalidad, opt => opt.MapFrom(src => src.Persona.Nacionalidad.ValorCategoria)).ForMember(dest => dest.Genero, opt => opt.MapFrom(src => src.Persona.Genero)).ForMember(dest => dest.Cargo, opt => opt.MapFrom(src => src.Cargo.NombreCargo)).ForMember(dest => dest.NombreOficina, opt => opt.MapFrom(src => src.Cargo.Oficina.Nombre)).ForMember(dest => dest.Activo, opt => opt.MapFrom(src => src.EstadoTrabajador)).ForMember(dest => dest.Horarios, opt => opt.MapFrom(src => src.Horarios));
 
         CreateMap<Asistencia, AsistenciaListaDTO>().ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Trabajador.Persona.CarnetIdentidad)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Trabajador.Persona.ApellidoPaterno + " " + src.Trabajador.Persona.ApellidoMaterno + " " + src.Trabajador.Persona.PrimerNombre)).ForMember(dest => dest.Cargo, opt => opt.MapFrom(src => src.Trabajador.Cargo.NombreCargo)).ForMember(dest => dest.Oficina, opt => opt.MapFrom(src => src.Trabajador.Cargo.Oficina.Nombre)).ForMember(dest => dest.EsEntrada, opt => opt.MapFrom(src => src.EsEntrada));
+
+        CreateMap<Falta, ListarFaltasDTO>().ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Trabajador.Persona.CarnetIdentidad)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Trabajador.Persona.ApellidoPaterno + " " + src.Trabajador.Persona.ApellidoMaterno + " " + src.Trabajador.Persona.PrimerNombre)).ForMember(dest => dest.Tipo, opt => opt.MapFrom(src => src.IdTipoFalta)).ForMember(dest => dest.Fecha, opt => opt.MapFrom(src => src.Fecha)).ForMember(dest => dest.Descripcion, opt => opt.MapFrom(src => src.Descripcion)).ForMember(dest => dest.ArchivoJustificativo, opt => opt.MapFrom(src => src.ArchivoJustificativo));
 
         CreateMap<LogAcceso, LogsAccesoDTO>().ForMember(dest => dest.NombreUsuario, opt => opt.MapFrom(src => src.Usuario.NombreUsuario)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Usuario.Persona.ApellidoPaterno + " " + src.Usuario.Persona.ApellidoMaterno + " " + src.Usuario.Persona.SegundoNombre + " "+src.Usuario.Persona.PrimerNombre));
 

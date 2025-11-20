@@ -9,9 +9,9 @@ public class ListarFaltasDTO
     public string ApellidosNombres { get; set; } = string.Empty;
 
     // Tabla clasificador
-    public string Tipo { get; set; } = string.Empty;
+    public int Tipo { get; set; }
     
     public DateTime Fecha { get; set; }
     public string Descripcion { get; set; } = string.Empty;
-    public string? UrlArchivoJustificativo { get; set; }
+    public byte[]? ArchivoJustificativo { get; set; }
 }
