@@ -25,6 +25,8 @@ public class AutoMapperProfile : Profile
         // indicamos que queremos convertir el objeto Usuario a un UserDto
         CreateMap<Usuario, UsuarioListarDTO>().ForMember(dest => dest.NombreCompleto, opt => opt.MapFrom(src => src.Persona.ApellidoPaterno + " " + src.Persona.ApellidoMaterno + " " + src.Persona.SegundoNombre + " " + src.Persona.PrimerNombre)).ForMember(dest => dest.Rol, opt => opt.MapFrom(src => src.Rol.NombreRol)).ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Persona.CarnetIdentidad)).ForMember(dest => dest.DescripcionRol, opt => opt.MapFrom(src => src.Rol.Descripcion)).ForMember(dest => dest.Genero, opt => opt.MapFrom(src => src.Persona.Genero)).ForMember(dest => dest.Activo, opt => opt.MapFrom(src => src.EstadoUsuario)).ForMember(dest => dest.IdPersona, opt => opt.MapFrom(src => src.Persona.IdPersona));
         CreateMap<UsuarioCrearDTO, Usuario>();
+        CreateMap<UsuarioActualizarDTO, Usuario>()
+            .ForMember(dest => dest.Password, opt => opt.Ignore());
 
 
         CreateMap<PersonaCrearDTO, Persona>().ReverseMap();
@@ -83,7 +85,7 @@ public class AutoMapperProfile : Profile
 
         CreateMap<Falta, ListarFaltasDTO>().ForMember(dest => dest.CI, opt => opt.MapFrom(src => src.Trabajador.Persona.CarnetIdentidad)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Trabajador.Persona.ApellidoPaterno + " " + src.Trabajador.Persona.ApellidoMaterno + " " + src.Trabajador.Persona.PrimerNombre)).ForMember(dest => dest.Tipo, opt => opt.MapFrom(src => src.IdTipoFalta)).ForMember(dest => dest.Fecha, opt => opt.MapFrom(src => src.Fecha)).ForMember(dest => dest.Descripcion, opt => opt.MapFrom(src => src.Descripcion)).ForMember(dest => dest.ArchivoJustificativo, opt => opt.MapFrom(src => src.ArchivoJustificativo));
 
-        CreateMap<LogAcceso, LogsAccesoDTO>().ForMember(dest => dest.NombreUsuario, opt => opt.MapFrom(src => src.Usuario.NombreUsuario)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Usuario.Persona.ApellidoPaterno + " " + src.Usuario.Persona.ApellidoMaterno + " " + src.Usuario.Persona.SegundoNombre + " "+src.Usuario.Persona.PrimerNombre));
+        CreateMap<LogAcceso, LogsAccesoDTO>().ForMember(dest => dest.NombreUsuario, opt => opt.MapFrom(src => src.Usuario.NombreUsuario)).ForMember(dest => dest.ApellidosNombres, opt => opt.MapFrom(src => src.Usuario.Persona.ApellidoPaterno + " " + src.Usuario.Persona.ApellidoMaterno + " " + src.Usuario.Persona.SegundoNombre + " " + src.Usuario.Persona.PrimerNombre));
 
         CreateMap<Rol, RolDTO>();
         CreateMap<Cargo, CargoDTO>();

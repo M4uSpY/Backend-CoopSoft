@@ -31,9 +31,9 @@ namespace BackendCoopSoft.Services
             if (user is null)
                 return null;
 
-            // Verificacion que sea el username igual a la de la bd
+            // Verificacion de usuario
             if (string.Equals(user.NombreUsuario, username, StringComparison.Ordinal) &&
-                user.Password == password)
+                BCrypt.Net.BCrypt.Verify(password, user.Password))
             {
                 return user;
             }

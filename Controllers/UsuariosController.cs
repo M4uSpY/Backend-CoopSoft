@@ -2,6 +2,7 @@ using AutoMapper;
 using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs;
 using BackendCoopSoft.DTOs.Usuarios;
+using BackendCoopSoft.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,8 @@ namespace BackendCoopSoft.Controllers
             var list = _mapper.Map<List<UsuarioListarDTO>>(usuarios);
             return Ok(list);
         }
+
+
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -41,31 +44,52 @@ namespace BackendCoopSoft.Controllers
             var usuarioDTO = _mapper.Map<UsuarioListarDTO>(usuario);
             return Ok(usuarioDTO);
         }
+
+
         [HttpPost]
-        public async Task<IActionResult> CrearUsuario(UsuarioCrearDTO usuarioDTO)
+        public async Task<IActionResult> CrearUsuario([FromBody] UsuarioCrearDTO usuarioDTO)
         {
-            if (usuarioDTO is null)
-            {
-                return BadRequest("El usuario no puede ser nulo");
-            }
-            var usuario = _mapper.Map<Models.Usuario>(usuarioDTO);
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var usuario = _mapper.Map<Usuario>(usuarioDTO);
+
+            // Hasheo de password
+            usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDTO.Password);
+
             await _db.Usuarios.AddAsync(usuario);
             await _db.SaveChangesAsync();
+
             var usuarioCreado = _mapper.Map<UsuarioListarDTO>(usuario);
             return CreatedAtAction(nameof(GetById), new { id = usuario.IdUsuario }, usuarioCreado);
         }
+
+
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> ActualizarUsuario(int id, UsuarioCrearDTO usuarioDTO)
+        public async Task<IActionResult> ActualizarUsuario(int id, [FromBody] UsuarioActualizarDTO dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.IdUsuario == id);
             if (usuario is null)
             {
                 return NotFound();
             }
-            _mapper.Map(usuarioDTO, usuario);
+
+            _mapper.Map(dto, usuario);
+
+            // Si vino una nueva contraseña entonces se procede al hasheo
+            if (!string.IsNullOrWhiteSpace(dto.PasswordNueva))
+            {
+                usuario.Password = BCrypt.Net.BCrypt.HashPassword(dto.PasswordNueva);
+            }
+
             await _db.SaveChangesAsync();
             return NoContent();
         }
+
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> EliminarUsuario(int id)
         {
@@ -77,6 +101,6 @@ namespace BackendCoopSoft.Controllers
             _db.Usuarios.Remove(usuario);
             await _db.SaveChangesAsync();
             return NoContent();
-        }   
+        }
     }
 }
