@@ -16,4 +16,7 @@ public class UsuarioCrearDTO
 
     [Required]
     public int IdRol { get; set; }
+
+    [Required]
+    public bool EstadoUsuario { get; set; }
 }
