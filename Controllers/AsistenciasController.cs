@@ -44,6 +44,44 @@ namespace BackendCoopSoft.Controllers
         [HttpPost]
         public async Task<IActionResult> RegistrarAsistencia([FromBody] AsistenciaCrearDTO dto)
         {
+            var hoy = dto.Fecha.Date;
+
+            // 0) Verificar si hoy tiene una solicitud aprobada (vacación o permiso)
+            var solicitudHoy = await _db.Solicitudes
+                .Include(s => s.TipoSolicitud)
+                .Include(s => s.EstadoSolicitud)
+                .Where(s => s.IdTrabajador == dto.IdTrabajador
+                            && s.FechaInicio <= hoy
+                            && s.FechaFin >= hoy
+                            && s.EstadoSolicitud.ValorCategoria == "Aprobado")
+                .FirstOrDefaultAsync();
+
+            if (solicitudHoy != null)
+            {
+                var tipoSol = solicitudHoy.TipoSolicitud.ValorCategoria;
+
+                if (tipoSol == "Vacación")
+                {
+                    // ❌ No aceptar asistencia si está de vacación
+                    return Ok(new AsistenciaRegistrarResultadoDTO
+                    {
+                        Registrado = false,
+                        TipoMarcacion = "EN_PROCESO",
+                        Mensaje = "No es posible registrar asistencia porque el trabajador se encuentra de vacación en esta fecha."
+                    });
+                }
+
+                if (tipoSol == "Permiso")
+                {
+                    // ✅ Día justificado: no se exige horario ni marcación
+                    return Ok(new AsistenciaRegistrarResultadoDTO
+                    {
+                        Registrado = false,
+                        TipoMarcacion = "EN_PROCESO",
+                        Mensaje = "El trabajador tiene un permiso aprobado para esta fecha, no es necesario registrar asistencia."
+                    });
+                }
+            }
             // 1) Buscar trabajador + horarios
             var trabajador = await _db.Trabajadores
                 .Include(t => t.Horarios)
