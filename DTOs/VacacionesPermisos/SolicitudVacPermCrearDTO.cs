@@ -11,9 +11,10 @@ public class SolicitudVacPermCrearDTO
     public DateTime FechaInicio { get; set; }
     [Required] 
     public DateTime FechaFin { get; set; }
-    [Required] 
-    public int IdTipoSolicitud { get; set; } // Clasificador: Vacación/Permiso
+
+
     [Required, StringLength(150)] 
     public string Motivo { get; set; } = string.Empty;
+    
     public string? Observacion { get; set; }
 }

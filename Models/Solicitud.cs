@@ -16,10 +16,6 @@ public class Solicitud
     [Column("id_trabajador")]
     public int IdTrabajador { get; set; }
 
-    [Required(ErrorMessage = "Es necesario el tipo de Solicitud")]
-    [Column("id_tipo_solicitud")]
-    public int IdTipoSolicitud { get; set; }
-
     [Required(ErrorMessage = "Es necesario un estado de la Solicitud")]
     [Column("id_estado_solicitud")]
     public int IdEstadoSolicitud { get; set; }
@@ -49,11 +45,6 @@ public class Solicitud
     // FK
     [ForeignKey(nameof(IdTrabajador))]
     public Trabajador Trabajador { get; set; } = null!;
-
-
-    [ForeignKey(nameof(IdTipoSolicitud))]
-    [InverseProperty(nameof(Clasificador.TiposSolicitud))]
-    public Clasificador TipoSolicitud { get; set; } = null!;
 
 
     [ForeignKey(nameof(IdEstadoSolicitud))]

@@ -25,16 +25,19 @@ public class Clasificador
     [Column("descripcion", TypeName = "nvarchar(max)")]
     public string? Descripcion { get; set; }
 
-    // Relacion 1 Clasfi -> N Tipo_Solicitud
-    [InverseProperty(nameof(Solicitud.TipoSolicitud))]
-    public ICollection<Solicitud> TiposSolicitud { get; set; } = new List<Solicitud>();
 
     // Relacion 1 Clasif -> N Estado_solicitud
     [InverseProperty(nameof(Solicitud.EstadoSolicitud))]
     public ICollection<Solicitud> EstadosSolicitud { get; set; } = new List<Solicitud>();
 
+    [InverseProperty(nameof(Licencia.EstadoLicencia))]
+    public ICollection<Licencia> EstadosLicencia { get; set; } = new List<Licencia>();
+
     // 1:N Persona
     public ICollection<Persona> Personas { get; set; } = new List<Persona>();
+
+    public virtual ICollection<Licencia> Licencias { get; set; } = new List<Licencia>();
+
 
 
     // 1:N Faltas

@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
 
     public DbSet<HuellaDactilar> HuellasDactilares => Set<HuellaDactilar>();
     public DbSet<Falta> Faltas => Set<Falta>();
+    public DbSet<Licencia> Licencias { get; set; } = null!;
 
     public DbSet<HistoricoUsuario> HistoricosUsuario => Set<HistoricoUsuario>();
     public DbSet<HistoricoFalta> HistoricosFalta => Set<HistoricoFalta>();
@@ -162,16 +163,35 @@ public class AppDbContext : DbContext
             .HasForeignKey(c => c.IdPeriodoPago)
             .OnDelete(DeleteBehavior.Restrict);
 
+
+        modelBuilder.Entity<Licencia>()
+        .Property(l => l.CantidadJornadas)
+        .HasColumnType("decimal(5,2)");
+
+        modelBuilder.Entity<Licencia>()
+        .HasOne(l => l.Trabajador)
+        .WithMany(t => t.Licencias)
+        .HasForeignKey(l => l.IdTrabajador)
+        .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Licencia>()
+            .HasOne(l => l.TipoLicencia)
+            .WithMany(c => c.Licencias)
+            .HasForeignKey(l => l.IdTipoLicencia)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Licencia>()
+            .HasOne(l => l.EstadoLicencia)
+            .WithMany(c => c.EstadosLicencia)
+            .HasForeignKey(l => l.IdEstadoLicencia)
+            .OnDelete(DeleteBehavior.Restrict);
+
+
+
         modelBuilder.Entity<Falta>()
             .HasOne(f => f.TipoFalta)
             .WithMany(c => c.Faltas)
             .HasForeignKey(f => f.IdTipoFalta)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<Solicitud>()
-            .HasOne(s => s.TipoSolicitud)
-            .WithMany(cl => cl.TiposSolicitud)
-            .HasForeignKey(s => s.IdTipoSolicitud)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Solicitud>()

@@ -4,6 +4,7 @@ using BackendCoopSoft.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BackendCoopSoft.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251123032257_AddLicenciasConHorasYCantidad")]
+    partial class AddLicenciasConHorasYCantidad
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -634,6 +637,70 @@ namespace BackendCoopSoft.Migrations
                     b.ToTable("Huella_Dactilar");
                 });
 
+            modelBuilder.Entity("BackendCoopSoft.Models.Licencia", b =>
+                {
+                    b.Property<int>("IdLicencia")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id_licencia");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdLicencia"));
+
+                    b.Property<byte[]>("ArchivoJustificativo")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)")
+                        .HasColumnName("archivo_justificativo");
+
+                    b.Property<decimal>("CantidadJornadas")
+                        .HasColumnType("decimal(5,2)")
+                        .HasColumnName("cantidad_jornadas");
+
+                    b.Property<DateTime>("FechaFin")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_fin");
+
+                    b.Property<DateTime>("FechaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_inicio");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_registro");
+
+                    b.Property<TimeSpan>("HoraFin")
+                        .HasColumnType("time")
+                        .HasColumnName("hora_fin");
+
+                    b.Property<TimeSpan>("HoraInicio")
+                        .HasColumnType("time")
+                        .HasColumnName("hora_inicio");
+
+                    b.Property<int>("IdTipoLicencia")
+                        .HasColumnType("int")
+                        .HasColumnName("id_tipo_licencia");
+
+                    b.Property<int>("IdTrabajador")
+                        .HasColumnType("int")
+                        .HasColumnName("id_trabajador");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("motivo");
+
+                    b.Property<string>("Observacion")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("observacion");
+
+                    b.HasKey("IdLicencia");
+
+                    b.HasIndex("IdTipoLicencia");
+
+                    b.HasIndex("IdTrabajador");
+
+                    b.ToTable("Licencia");
+                });
+
             modelBuilder.Entity("BackendCoopSoft.Models.LogAcceso", b =>
                 {
                     b.Property<int>("IdLog")
@@ -1086,80 +1153,6 @@ namespace BackendCoopSoft.Migrations
                     b.ToTable("Usuario");
                 });
 
-            modelBuilder.Entity("Licencia", b =>
-                {
-                    b.Property<int>("IdLicencia")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id_licencia");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdLicencia"));
-
-                    b.Property<byte[]>("ArchivoJustificativo")
-                        .IsRequired()
-                        .HasColumnType("varbinary(max)")
-                        .HasColumnName("archivo_justificativo");
-
-                    b.Property<decimal>("CantidadJornadas")
-                        .HasColumnType("decimal(5,2)")
-                        .HasColumnName("cantidad_jornadas");
-
-                    b.Property<DateTime?>("FechaAprobacion")
-                        .HasColumnType("date")
-                        .HasColumnName("fecha_aprobacion");
-
-                    b.Property<DateTime>("FechaFin")
-                        .HasColumnType("date")
-                        .HasColumnName("fecha_fin");
-
-                    b.Property<DateTime>("FechaInicio")
-                        .HasColumnType("date")
-                        .HasColumnName("fecha_inicio");
-
-                    b.Property<DateTime>("FechaRegistro")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("fecha_registro");
-
-                    b.Property<TimeSpan>("HoraFin")
-                        .HasColumnType("time")
-                        .HasColumnName("hora_fin");
-
-                    b.Property<TimeSpan>("HoraInicio")
-                        .HasColumnType("time")
-                        .HasColumnName("hora_inicio");
-
-                    b.Property<int>("IdEstadoLicencia")
-                        .HasColumnType("int")
-                        .HasColumnName("id_estado_licencia");
-
-                    b.Property<int>("IdTipoLicencia")
-                        .HasColumnType("int")
-                        .HasColumnName("id_tipo_licencia");
-
-                    b.Property<int>("IdTrabajador")
-                        .HasColumnType("int")
-                        .HasColumnName("id_trabajador");
-
-                    b.Property<string>("Motivo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(200)")
-                        .HasColumnName("motivo");
-
-                    b.Property<string>("Observacion")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("observacion");
-
-                    b.HasKey("IdLicencia");
-
-                    b.HasIndex("IdEstadoLicencia");
-
-                    b.HasIndex("IdTipoLicencia");
-
-                    b.HasIndex("IdTrabajador");
-
-                    b.ToTable("Licencia");
-                });
-
             modelBuilder.Entity("BackendCoopSoft.Models.Asistencia", b =>
                 {
                     b.HasOne("BackendCoopSoft.Models.Trabajador", "Trabajador")
@@ -1405,6 +1398,25 @@ namespace BackendCoopSoft.Migrations
                     b.Navigation("Persona");
                 });
 
+            modelBuilder.Entity("BackendCoopSoft.Models.Licencia", b =>
+                {
+                    b.HasOne("BackendCoopSoft.Models.Clasificador", "TipoLicencia")
+                        .WithMany("Licencias")
+                        .HasForeignKey("IdTipoLicencia")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BackendCoopSoft.Models.Trabajador", "Trabajador")
+                        .WithMany()
+                        .HasForeignKey("IdTrabajador")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TipoLicencia");
+
+                    b.Navigation("Trabajador");
+                });
+
             modelBuilder.Entity("BackendCoopSoft.Models.LogAcceso", b =>
                 {
                     b.HasOne("BackendCoopSoft.Models.Usuario", "Usuario")
@@ -1533,33 +1545,6 @@ namespace BackendCoopSoft.Migrations
                     b.Navigation("Rol");
                 });
 
-            modelBuilder.Entity("Licencia", b =>
-                {
-                    b.HasOne("BackendCoopSoft.Models.Clasificador", "EstadoLicencia")
-                        .WithMany("EstadosLicencia")
-                        .HasForeignKey("IdEstadoLicencia")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BackendCoopSoft.Models.Clasificador", "TipoLicencia")
-                        .WithMany("Licencias")
-                        .HasForeignKey("IdTipoLicencia")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BackendCoopSoft.Models.Trabajador", "Trabajador")
-                        .WithMany("Licencias")
-                        .HasForeignKey("IdTrabajador")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("EstadoLicencia");
-
-                    b.Navigation("TipoLicencia");
-
-                    b.Navigation("Trabajador");
-                });
-
             modelBuilder.Entity("BackendCoopSoft.Models.Cargo", b =>
                 {
                     b.Navigation("Trabajadors");
@@ -1567,8 +1552,6 @@ namespace BackendCoopSoft.Migrations
 
             modelBuilder.Entity("BackendCoopSoft.Models.Clasificador", b =>
                 {
-                    b.Navigation("EstadosLicencia");
-
                     b.Navigation("EstadosSolicitud");
 
                     b.Navigation("Faltas");
@@ -1642,8 +1625,6 @@ namespace BackendCoopSoft.Migrations
                     b.Navigation("HistoricosTrabajador");
 
                     b.Navigation("Horarios");
-
-                    b.Navigation("Licencias");
 
                     b.Navigation("Solicitudes");
 

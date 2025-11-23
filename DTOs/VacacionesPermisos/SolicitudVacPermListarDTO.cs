@@ -8,7 +8,10 @@ public class SolicitudVacPermListarDTO
     public string CI { get; set; } = string.Empty;
     public string ApellidosNombres { get; set; } = string.Empty;
     public string Cargo { get; set; } = string.Empty;
-    public string Tipo { get; set; } = string.Empty;
+
+    public string Tipo { get; set; } = "Vacacion";
+
+
     public string Motivo { get; set; } = string.Empty;
     public DateTime FechaInicio { get; set; }
     public DateTime FechaFin { get; set; }
