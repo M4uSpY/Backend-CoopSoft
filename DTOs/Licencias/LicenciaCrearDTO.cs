@@ -28,4 +28,6 @@ public class LicenciaCrearDTO
     public string Motivo { get; set; } = string.Empty;
 
     public string? Observacion { get; set; }
+
+    public byte[]? ArchivoJustificativo { get; set; }
 }

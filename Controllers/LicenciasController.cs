@@ -126,10 +126,20 @@ public class LicenciasController : ControllerBase
         switch (nombreTipo)
         {
             case "Paternidad":
-                // 3 días corridos desde la fecha indicada
-                fechaFin = fechaInicio.AddDays(2);
-                AjustarHorasJornadaCompleta(horarios, fechaInicio, fechaFin, out horaInicio, out horaFin);
-                break;
+                {
+                    // Validamos que el rango de fechas tenga exactamente 3 días corridos
+                    var dias = (fechaFin.Date - fechaInicio.Date).TotalDays + 1; // incluyente
+                    if (dias != 3)
+                    {
+                        return BadRequest(
+                            "La licencia por paternidad debe abarcar exactamente 3 días corridos. " +
+                            "Por favor selecciona un rango de 3 días.");
+                    }
+
+                    // Ajustamos horas a jornada completa en ese rango
+                    AjustarHorasJornadaCompleta(horarios, fechaInicio, fechaFin, out horaInicio, out horaFin);
+                    break;
+                }
 
             case "Matrimonio":
             case "Luto / Duelo":
@@ -295,6 +305,17 @@ public class LicenciasController : ControllerBase
                 $"La solicitud actual equivale a {cantidadJornadas} jornadas.");
         }
 
+        // VALIDACIÓN DE EXACTAMENTE 3 JORNADAS PARA CIERTOS TIPOS
+        if (nombreTipo == "Paternidad" || nombreTipo == "Matrimonio" || nombreTipo == "Luto / Duelo")
+        {
+            if (cantidadJornadas < 3m)
+            {
+                return BadRequest(
+                    $"La licencia de tipo '{nombreTipo}' debe ser exactamente de 3 jornadas laborales. " +
+                    $"La solicitud actual equivale a {cantidadJornadas} jornadas.");
+            }
+        }
+
         var licencia = new Licencia
         {
             IdTrabajador = dto.IdTrabajador,
@@ -307,7 +328,9 @@ public class LicenciasController : ControllerBase
             CantidadJornadas = cantidadJornadas,
             Motivo = dto.Motivo,
             Observacion = dto.Observacion,
-            ArchivoJustificativo = Array.Empty<byte>(),
+
+            ArchivoJustificativo = dto.ArchivoJustificativo ?? Array.Empty<byte>(),
+
             FechaRegistro = DateTime.Now
         };
 
