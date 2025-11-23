@@ -340,6 +340,28 @@ public class LicenciasController : ControllerBase
         return CreatedAtAction(nameof(ObtenerLicencias), new { id = licencia.IdLicencia }, licencia.IdLicencia);
     }
 
+    [HttpGet("{id:int}/archivo")]
+    public async Task<IActionResult> DescargarArchivoJustificativo(int id)
+    {
+        var licencia = await _db.Licencias
+            .FirstOrDefaultAsync(l => l.IdLicencia == id);
+
+        if (licencia is null)
+            return NotFound("Licencia no encontrada.");
+
+        if (licencia.ArchivoJustificativo == null || licencia.ArchivoJustificativo.Length == 0)
+            return NotFound("La licencia no tiene archivo justificativo.");
+
+        var nombreArchivo = $"Justificativo_Licencia_{id}.pdf";
+
+        return File(
+            licencia.ArchivoJustificativo,
+            "application/pdf",
+            nombreArchivo
+        );
+    }
+
+
     // PUT api/Licencias/5/aprobar
     [HttpPut("{id:int}/aprobar")]
     public async Task<IActionResult> AprobarLicencia(int id)
