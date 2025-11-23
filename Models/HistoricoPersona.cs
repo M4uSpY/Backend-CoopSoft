@@ -23,6 +23,14 @@ public class HistoricoPersona
     [Column("fecha_modificacion", TypeName = "date")]
     public DateTime FechaModificacion { get; set; }
 
+    [Required]
+    [Column("accion", TypeName = "nvarchar(50)")]
+    public string Accion { get; set; } = string.Empty;
+
+    
+    [Column("apartados_modificados", TypeName = "nvarchar(max)")]
+    public string? ApartadosModificados { get; set; }
+
     // 🔗 Propiedad de navegación al usuario "dueño" del histórico
     [ForeignKey(nameof(IdPersona))]
     public Persona Persona { get; set; } = null!;
