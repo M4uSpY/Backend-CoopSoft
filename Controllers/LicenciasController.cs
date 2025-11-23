@@ -110,28 +110,32 @@ public class LicenciasController : ControllerBase
         if (estadoPendiente is null)
             return StatusCode(500, "No está configurado el estado 'Pendiente'.");
 
+        var horarios = trabajador.Horarios.ToList();
+
         // copiamos para poder ajustarlos según el tipo
         var fechaInicio = dto.FechaInicio.Date;
         var fechaFin = dto.FechaFin.Date;
         var horaInicio = dto.HoraInicio;
         var horaFin = dto.HoraFin;
 
+        string nombreTipo = tipoLicencia.ValorCategoria;
+
         // ======================
         //   REGLAS POR TIPO
         // ======================
-        switch (tipoLicencia.ValorCategoria)
+        switch (nombreTipo)
         {
             case "Paternidad":
                 // 3 días corridos desde la fecha indicada
                 fechaFin = fechaInicio.AddDays(2);
-                AjustarHorasJornadaCompleta(trabajador.Horarios.ToList(), fechaInicio, fechaFin, out horaInicio, out horaFin);
+                AjustarHorasJornadaCompleta(horarios, fechaInicio, fechaFin, out horaInicio, out horaFin);
                 break;
 
             case "Matrimonio":
             case "Luto / Duelo":
-                // 3 jornadas laborales → calcular con días hábiles, pero usamos rango y horarios
-                fechaFin = fechaInicio.AddDays(6); // luego el helper solo contará los días con horario
-                AjustarHorasJornadaCompleta(trabajador.Horarios.ToList(), fechaInicio, fechaFin, out horaInicio, out horaFin);
+                // 3 jornadas laborales (dejamos que el helper cuente las que correspondan)
+                // Usamos un rango de varios días, pero luego validamos que no supere 3 jornadas.
+                AjustarHorasJornadaCompleta(horarios, fechaInicio, fechaFin, out horaInicio, out horaFin);
                 break;
 
             case "Examen Papanicolaou / Mamografía":
@@ -139,29 +143,68 @@ public class LicenciasController : ControllerBase
             case "Examen Colon":
                 // 1 día completo
                 fechaFin = fechaInicio;
-                AjustarHorasJornadaCompleta(trabajador.Horarios.ToList(), fechaInicio, fechaFin, out horaInicio, out horaFin);
+                AjustarHorasJornadaCompleta(horarios, fechaInicio, fechaFin, out horaInicio, out horaFin);
                 break;
 
             case "Cumpleaños":
-                var fn = trabajador.Persona.FechaNacimiento;
-                var thisYearBirth = new DateTime(DateTime.Today.Year, fn.Month, fn.Day);
+                {
+                    var fn = trabajador.Persona.FechaNacimiento;
+                    var thisYearBirth = new DateTime(DateTime.Today.Year, fn.Month, fn.Day);
 
-                fechaInicio = fechaFin = thisYearBirth;
+                    // Si ya pasó el cumpleaños de este año → no puede pedir
+                    if (DateTime.Today > thisYearBirth)
+                    {
+                        return BadRequest(
+                            $"La licencia por cumpleaños sólo puede solicitarse hasta el día del cumpleaños " +
+                            $"({thisYearBirth:dd/MM/yyyy}).");
+                    }
 
-                var horarioCumple = ObtenerHorarioDia(trabajador.Horarios.ToList(), thisYearBirth);
-                if (horarioCumple is null)
-                    return BadRequest("El trabajador no tiene horario definido el día de su cumpleaños.");
+                    // Sólo se permite el día del cumpleaños
+                    fechaInicio = fechaFin = thisYearBirth;
 
-                var duracion = horarioCumple.HoraSalida - horarioCumple.HoraEntrada;
-                var mitad = TimeSpan.FromMinutes(duracion.TotalMinutes / 2);
+                    var horarioCumple = ObtenerHorarioDia(horarios, thisYearBirth);
+                    if (horarioCumple is null)
+                        return BadRequest("El trabajador no tiene horario definido el día de su cumpleaños.");
 
-                horaInicio = horarioCumple.HoraEntrada;
-                horaFin = horarioCumple.HoraEntrada + mitad;
+                    var duracion = horarioCumple.HoraSalida - horarioCumple.HoraEntrada;
+                    var mitad = TimeSpan.FromMinutes(duracion.TotalMinutes / 2);
+
+                    // Media jornada
+                    horaInicio = horarioCumple.HoraEntrada;
+                    horaFin = horarioCumple.HoraEntrada + mitad;
+
+                    // Opcional: evitar que pida más de una licencia por cumple en el mismo año
+                    bool yaPidioCumple = await _db.Licencias.AnyAsync(l =>
+                        l.IdTrabajador == dto.IdTrabajador &&
+                        l.IdTipoLicencia == tipoLicencia.IdClasificador &&
+                        l.FechaInicio.Year == thisYearBirth.Year);
+
+                    if (yaPidioCumple)
+                        return BadRequest("Ya se registró una licencia por cumpleaños para este año.");
+                }
                 break;
 
             case "Capacitación / Formación profesional":
-                if ((horaFin - horaInicio).TotalHours > 2.1)
-                    return BadRequest("La licencia por capacitación no puede exceder 2 horas diarias.");
+                {
+                    var horasDia = (horaFin - horaInicio).TotalHours;
+                    if (horasDia > 2.1)
+                        return BadRequest("La licencia por capacitación no puede exceder 2 horas diarias.");
+                }
+                break;
+
+            case "Permiso temporal":
+                // acá dejamos fechas/horas como el usuario elija,
+                // pero luego validamos las 3 horas mensuales.
+                break;
+
+            case "Maternidad":
+                // No tocamos fechas: puede ser prenatal o postnatal.
+                // Sólo validamos que no supere 45 jornadas después del cálculo.
+                break;
+
+            case "Estado crítico de salud de hijos":
+                // D.S. 3462 prevé varios escenarios; simplificamos a un máximo
+                // de 30 días/jornadas laborales continuas o discontinuas.
                 break;
         }
 
@@ -171,6 +214,45 @@ public class LicenciasController : ControllerBase
         if (horaFin <= horaInicio)
             return BadRequest("La hora fin debe ser mayor que la hora inicio.");
 
+        // Duración en horas (útil para permisos)
+        var horasSolicitudActual = (horaFin - horaInicio).TotalHours;
+        if (horasSolicitudActual <= 0)
+            return BadRequest("La duración de la licencia debe ser mayor a 0 horas.");
+
+        // ===========================
+        //  REGLA ESPECIAL PERMISO TEMPORAL (3h/mes)
+        // ===========================
+        if (nombreTipo == "Permiso temporal")
+        {
+            int year = fechaInicio.Year;
+            int month = fechaInicio.Month;
+
+            var licenciasMes = await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Where(l => l.IdTrabajador == dto.IdTrabajador
+                            && l.IdTipoLicencia == tipoLicencia.IdClasificador
+                            && l.FechaInicio.Year == year
+                            && l.FechaInicio.Month == month
+                            && l.EstadoLicencia.ValorCategoria != "Rechazado")
+                .ToListAsync();
+
+            double horasYaUsadas = licenciasMes
+                .Sum(l => (l.HoraFin - l.HoraInicio).TotalHours);
+
+            if (horasYaUsadas + horasSolicitudActual > 3.0)
+            {
+                double restantes = 3.0 - horasYaUsadas;
+                if (restantes < 0) restantes = 0;
+
+                return BadRequest(
+                    $"El trabajador ya utilizó {horasYaUsadas:0.##} h de permiso temporal este mes. " +
+                    $"Sólo le quedan {restantes:0.##} h de las 3 h mensuales permitidas.");
+            }
+        }
+
+        // ===========================
+        //  CÁLCULO DE JORNADAS
+        // ===========================
         var cantidadJornadas = LicenciaHelper.CalcularCantidadJornadas(
             new LicenciaCrearDTO
             {
@@ -179,7 +261,39 @@ public class LicenciasController : ControllerBase
                 HoraInicio = horaInicio,
                 HoraFin = horaFin
             },
-            trabajador.Horarios.ToList());
+            horarios);
+        // ===========================
+        //  TOPES DE JORNADAS POR TIPO
+        // ===========================
+        decimal maxJornadas = 0m;
+        switch (nombreTipo)
+        {
+            case "Maternidad":
+                maxJornadas = 45m;
+                break;
+
+            case "Paternidad":
+            case "Matrimonio":
+            case "Luto / Duelo":
+                maxJornadas = 3m;
+                break;
+
+            case "Cumpleaños":
+                maxJornadas = 0.5m; // media jornada
+                break;
+
+            case "Estado crítico de salud de hijos":
+                maxJornadas = 30m; // simplificado
+                break;
+        }
+
+
+        if (maxJornadas > 0m && cantidadJornadas > maxJornadas)
+        {
+            return BadRequest(
+                $"La licencia de tipo '{nombreTipo}' no puede exceder {maxJornadas} jornadas laborales. " +
+                $"La solicitud actual equivale a {cantidadJornadas} jornadas.");
+        }
 
         var licencia = new Licencia
         {

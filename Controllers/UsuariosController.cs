@@ -115,8 +115,6 @@ namespace BackendCoopSoft.Controllers
                 usuario.Password = BCrypt.Net.BCrypt.HashPassword(dto.PasswordNueva);
             }
 
-
-
             // Detectar cambios
             List<string> cambios = new();
 
