@@ -171,6 +171,59 @@ namespace BackendCoopSoft.Controllers
             if (!trabajadorExiste)
                 return BadRequest("El trabajador indicado no existe.");
 
+            // 
+            var fechaInicio = dto.FechaInicio.Date;
+            var fechaFin = dto.FechaFin.Date;
+
+            // ============================
+            //  1) EVITAR SOLAPAMIENTO CON OTRAS VACACIONES
+            // ============================
+            var vacacionesSolapadas = await _db.Solicitudes
+                .Include(s => s.EstadoSolicitud)
+                .Where(s =>
+                    s.IdTrabajador == dto.IdTrabajador &&
+                    s.EstadoSolicitud.ValorCategoria != "Rechazado" &&
+                    // Rango de fechas solapado:
+                    s.FechaInicio <= fechaFin &&
+                    s.FechaFin >= fechaInicio)
+                .ToListAsync();
+
+            if (vacacionesSolapadas.Any())
+            {
+                var otra = vacacionesSolapadas.First();
+
+                return BadRequest(
+                    $"El trabajador ya tiene una solicitud de vacación registrada entre " +
+                    $"{otra.FechaInicio:dd/MM/yyyy} y {otra.FechaFin:dd/MM/yyyy} " +
+                    $"(estado: {otra.EstadoSolicitud.ValorCategoria}). " +
+                    $"No se permiten vacaciones que se solapen en fechas.");
+            }
+
+            // ============================
+            //  2) EVITAR SOLAPAMIENTO CON LICENCIAS
+            // ============================
+            var licenciasSolapadas = await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
+                .Where(l =>
+                    l.IdTrabajador == dto.IdTrabajador &&
+                    l.EstadoLicencia.ValorCategoria != "Rechazado" &&
+                    // Rango de fechas solapado:
+                    l.FechaInicio <= fechaFin &&
+                    l.FechaFin >= fechaInicio)
+                .ToListAsync();
+
+            if (licenciasSolapadas.Any())
+            {
+                var lic = licenciasSolapadas.First();
+
+                return BadRequest(
+                    $"El trabajador tiene una licencia registrada entre " +
+                    $"{lic.FechaInicio:dd/MM/yyyy} y {lic.FechaFin:dd/MM/yyyy} " +
+                    $"(tipo: {lic.TipoLicencia.ValorCategoria}, estado: {lic.EstadoLicencia.ValorCategoria}). " +
+                    "No se puede solicitar vacación sobre días cubiertos por licencias.");
+            }
+
             // Estado "Pendiente"
             var estadoPendiente = await _db.Clasificadores
                 .FirstOrDefaultAsync(c =>

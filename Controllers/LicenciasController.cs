@@ -260,6 +260,38 @@ public class LicenciasController : ControllerBase
             }
         }
 
+
+        // 🔽 AQUÍ VA LA NUEVA REGLA DE NO SOLAPAR 🔽
+
+        // ===========================
+        //  EVITAR SOLAPAMIENTO DE LICENCIAS
+        // ===========================
+
+        // Buscamos licencias (no rechazadas) que se crucen en FECHAS
+        var licenciasSolapadas = await _db.Licencias
+            .Include(l => l.EstadoLicencia)
+            .Include(l => l.TipoLicencia)
+            .Where(l =>
+                l.IdTrabajador == dto.IdTrabajador &&
+                l.EstadoLicencia.ValorCategoria != "Rechazado" &&
+                // RANGO DE FECHAS SOLAPADO:
+                l.FechaInicio <= fechaFin &&
+                l.FechaFin >= fechaInicio)
+            .ToListAsync();
+
+        if (licenciasSolapadas.Any())
+        {
+            var existente = licenciasSolapadas.First();
+
+            return BadRequest(
+                $"El trabajador ya tiene una licencia registrada entre " +
+                $"{existente.FechaInicio:dd/MM/yyyy} y {existente.FechaFin:dd/MM/yyyy} " +
+                $"(tipo: {existente.TipoLicencia.ValorCategoria}). " +
+                "No se permiten licencias que se solapen en fechas.");
+        }
+
+        // 🔼 NUEVA REGLA AQUÍ 🔼
+
         // ===========================
         //  CÁLCULO DE JORNADAS
         // ===========================
@@ -315,7 +347,29 @@ public class LicenciasController : ControllerBase
                     $"La solicitud actual equivale a {cantidadJornadas} jornadas.");
             }
         }
+        // ===========================
+        //  EVITAR DUPLICAR LICENCIA IGUAL
+        //  (mismo trabajador, mismo tipo, mismo rango de fechas/horas)
+        // ===========================
+        if (nombreTipo == "Luto / Duelo" ||
+            nombreTipo == "Paternidad" ||
+            nombreTipo == "Matrimonio")
+        {
+            bool yaExisteMismaLicencia = await _db.Licencias.AnyAsync(l =>
+                l.IdTrabajador == dto.IdTrabajador &&
+                l.IdTipoLicencia == tipoLicencia.IdClasificador &&
+                l.FechaInicio == fechaInicio &&
+                l.FechaFin == fechaFin &&
+                l.HoraInicio == horaInicio &&
+                l.HoraFin == horaFin);
 
+            if (yaExisteMismaLicencia)
+            {
+                return BadRequest(
+                    $"Ya existe una licencia de tipo '{nombreTipo}' para este trabajador " +
+                    $"con el mismo rango de fechas y horas.");
+            }
+        }
         var licencia = new Licencia
         {
             IdTrabajador = dto.IdTrabajador,
@@ -328,9 +382,7 @@ public class LicenciasController : ControllerBase
             CantidadJornadas = cantidadJornadas,
             Motivo = dto.Motivo,
             Observacion = dto.Observacion,
-
             ArchivoJustificativo = dto.ArchivoJustificativo ?? Array.Empty<byte>(),
-
             FechaRegistro = DateTime.Now
         };
 
