@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BackendCoopSoft")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+109bc9926d7eb234c7f9ee8ec6a83314adeae0e9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f627c6eb2ee3ac4bd39dc21a5805b1fa51979c6f")]
 [assembly: System.Reflection.AssemblyProductAttribute("BackendCoopSoft")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BackendCoopSoft")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

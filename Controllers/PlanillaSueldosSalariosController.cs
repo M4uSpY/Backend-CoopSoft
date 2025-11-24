@@ -12,6 +12,12 @@ namespace BackendCoopSoft.Controllers
     {
         private readonly AppDbContext _db;
 
+        // SMN vigente (ajusta cuando cambie)
+        private const decimal SMN_2025 = 2750m;
+
+        // BASE para el bono de antigüedad = 3 x SMN
+        private const decimal BASE_BONO_ANT = SMN_2025 * 3m; // 8250 Bs
+
         public PlanillaSueldosSalariosController(AppDbContext db)
         {
             _db = db;
@@ -115,9 +121,13 @@ namespace BackendCoopSoft.Controllers
                 if (existentes.Any(e => e.IdTrabajador == t.IdTrabajador))
                     continue;
 
-                int diasPeriodo = (planilla.PeriodoHasta - planilla.PeriodoDesde).Days + 1;
-                if (diasPeriodo < 0) diasPeriodo = 0;
+                // DÍAS PAGADOS = Asistencia (entrada+salida) + Vacación aprobada + Licencia aprobada
+                int diasPagados = await CalcularDiasPagadosAsync(
+                    t.IdTrabajador,
+                    planilla.PeriodoDesde,
+                    planilla.PeriodoHasta);
 
+                // Antigüedad en meses (si quieres seguir guardando este campo)
                 int antigMeses = CalcularMesesAntiguedad(t.FechaIngreso, planilla.PeriodoHasta);
 
                 var fila = new TrabajadorPlanilla
@@ -131,8 +141,10 @@ namespace BackendCoopSoft.Controllers
 
                     NombreCargoMes = t.Cargo.NombreCargo,
                     HaberBasicoMes = t.HaberBasico,
-                    DiasTrabajados = diasPeriodo,
-                    HorasTrabajadas = diasPeriodo * 8,
+
+                    DiasTrabajados = diasPagados,
+                    HorasTrabajadas = diasPagados * 8,
+
                     AntiguedadMeses = antigMeses
                 };
 
@@ -148,6 +160,7 @@ namespace BackendCoopSoft.Controllers
             return Ok($"Se generaron {nuevos.Count} filas de Trabajador_Planilla.");
         }
 
+        // Antigüedad en meses (puede servir para reportes históricos)
         private static int CalcularMesesAntiguedad(DateTime fechaIngreso, DateTime hasta)
         {
             if (hasta < fechaIngreso) return 0;
@@ -161,8 +174,92 @@ namespace BackendCoopSoft.Controllers
             return meses < 0 ? 0 : meses;
         }
 
+        // Años completos de antigüedad (11.8 -> 11)
+        private static int CalcularAniosAntiguedad(DateTime fechaIngreso, DateTime hasta)
+        {
+            int anios = hasta.Year - fechaIngreso.Year;
+
+            if (hasta.Month < fechaIngreso.Month ||
+               (hasta.Month == fechaIngreso.Month && hasta.Day < fechaIngreso.Day))
+            {
+                anios--;
+            }
+
+            return anios < 0 ? 0 : anios;
+        }
+
+        // Porcentaje de bono antigüedad según tabla (años)
+        private static decimal ObtenerPorcentajeAntiguedad(int anios)
+        {
+            if (anios < 2) return 0m;      // de 0 a 2
+            if (anios < 5) return 0.05m;   // de 2 a 5
+            if (anios < 8) return 0.11m;   // de 5 a 8
+            if (anios < 11) return 0.18m;  // de 8 a 11
+            if (anios < 15) return 0.26m;  // de 11 a 15
+            if (anios < 20) return 0.34m;  // de 15 a 20
+            if (anios < 25) return 0.42m;  // de 20 a 25
+            return 0.50m;                  // más de 25
+        }
+
+        // DÍAS PAGADOS: jornada completa o vacación aprobada o licencia aprobada
+        private async Task<int> CalcularDiasPagadosAsync(int idTrabajador, DateTime desde, DateTime hasta)
+        {
+            var inicio = desde.Date;
+            var fin = hasta.Date;
+
+            // Asistencias en el periodo
+            var asistencias = await _db.Asistencias
+                .Where(a => a.IdTrabajador == idTrabajador
+                            && a.Fecha >= inicio
+                            && a.Fecha <= fin)
+                .ToListAsync();
+
+            // Vacaciones aprobadas
+            var vacaciones = await _db.Solicitudes
+                .Include(s => s.EstadoSolicitud)
+                .Where(s => s.IdTrabajador == idTrabajador
+                            && s.EstadoSolicitud.Categoria == "EstadoSolicitud"
+                            && s.EstadoSolicitud.ValorCategoria == "Aprobado"
+                            && s.FechaFin >= inicio
+                            && s.FechaInicio <= fin)
+                .ToListAsync();
+
+            // Licencias aprobadas
+            var licencias = await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Where(l => l.IdTrabajador == idTrabajador
+                            && l.EstadoLicencia.Categoria == "EstadoSolicitud"
+                            && l.EstadoLicencia.ValorCategoria == "Aprobado"
+                            && l.FechaFin >= inicio
+                            && l.FechaInicio <= fin)
+                .ToListAsync();
+
+            int diasPagados = 0;
+
+            for (var fecha = inicio; fecha <= fin; fecha = fecha.AddDays(1))
+            {
+                // Jornada completa: tiene entrada y salida
+                bool tieneEntrada = asistencias.Any(a => a.Fecha == fecha && a.EsEntrada);
+                bool tieneSalida = asistencias.Any(a => a.Fecha == fecha && !a.EsEntrada);
+                bool jornadaCompleta = tieneEntrada && tieneSalida;
+
+                // Día de vacación (aprobada)
+                bool diaEnVacacion = vacaciones.Any(v =>
+                    v.FechaInicio.Date <= fecha && v.FechaFin.Date >= fecha);
+
+                // Día con licencia (aprobada) – se cuenta como pagado
+                bool diaEnLicencia = licencias.Any(l =>
+                    l.FechaInicio.Date <= fecha && l.FechaFin.Date >= fecha);
+
+                if (jornadaCompleta || diaEnVacacion || diaEnLicencia)
+                    diasPagados++;
+            }
+
+            return diasPagados;
+        }
+
         // ==========================================
-        // 3) CALCULAR PLANILLA (tu método)
+        // 3) CALCULAR PLANILLA
         // ==========================================
         [HttpPost("{idPlanilla:int}/calcular")]
         public async Task<IActionResult> CalcularPlanilla(int idPlanilla)
@@ -225,20 +322,28 @@ namespace BackendCoopSoft.Controllers
                     totalIngresos += haberBasico;
                 }
 
+                // BONO DE ANTIGÜEDAD = 3 x SMN x porcentaje(según años)
                 decimal bonoAnt = 0m;
                 if (conceptos.ContainsKey("BONO_ANT"))
                 {
-                    decimal porcAnt = ObtenerPorcentajeAntiguedad(tp.AntiguedadMeses);
-                    bonoAnt = tp.HaberBasicoMes * porcAnt;
+                    int aniosAnt = CalcularAniosAntiguedad(
+                        tp.Trabajador.FechaIngreso,
+                        planilla.PeriodoHasta);
+
+                    decimal porcAnt = ObtenerPorcentajeAntiguedad(aniosAnt);
+                    bonoAnt = BASE_BONO_ANT * porcAnt;
+
                     Add("BONO_ANT", bonoAnt);
                     totalIngresos += bonoAnt;
                 }
 
-                decimal bonoProdManual = manuales
-                    .Where(m => m.Concepto.Codigo == "BONO_PROD")
-                    .Sum(m => m.Valor);
-                totalIngresos += bonoProdManual;
+                // BONO PRODUCCIÓN: solo manual (ya viene en "manuales")
+                // decimal bonoProdManual = manuales
+                //     .Where(m => m.Concepto.Codigo == "BONO_PROD")
+                //     .Sum(m => m.Valor);
+                // totalIngresos += bonoProdManual;
 
+                // APORTE COOP 3.34% (sobre Haber Básico)
                 decimal apCoop = 0m;
                 if (conceptos.ContainsKey("AP_COOP_334"))
                 {
@@ -250,6 +355,7 @@ namespace BackendCoopSoft.Controllers
                 var totalGanado = totalIngresos;
 
                 // ========= DESCUENTOS =========
+                // GESTORA 12.21% sobre TOTAL GANADO
                 decimal gestora = 0m;
                 if (conceptos.ContainsKey("GESTORA_1221"))
                 {
@@ -258,11 +364,13 @@ namespace BackendCoopSoft.Controllers
                     totalDescuentos += gestora;
                 }
 
-                decimal rcIvaManual = manuales
-                    .Where(m => m.Concepto.Codigo == "RC_IVA_13")
-                    .Sum(m => m.Valor);
-                totalDescuentos += rcIvaManual;
+                // RC-IVA: siempre manual
+                // decimal rcIvaManual = manuales
+                //     .Where(m => m.Concepto.Codigo == "RC_IVA_13")
+                //     .Sum(m => m.Valor);
+                // totalDescuentos += rcIvaManual;
 
+                // APORTE SOLIDARIO 0.5% sobre TOTAL GANADO
                 decimal apSol = 0m;
                 if (conceptos.ContainsKey("AP_SOL_05"))
                 {
@@ -271,19 +379,22 @@ namespace BackendCoopSoft.Controllers
                     totalDescuentos += apSol;
                 }
 
+                // OTROS DESC. 6.68% sobre TOTAL GANADO (por ejemplo CPS)
                 decimal otros668 = 0m;
                 if (conceptos.ContainsKey("OTROS_DESC_668"))
                 {
-                    otros668 = tp.HaberBasicoMes * 0.0668m;
+                    otros668 = apCoop * 2m;
                     Add("OTROS_DESC_668", otros668);
                     totalDescuentos += otros668;
                 }
 
-                decimal otrosDescManual = manuales
-                    .Where(m => m.Concepto.Codigo == "OTROS_DESC")
-                    .Sum(m => m.Valor);
-                totalDescuentos += otrosDescManual;
+                // OTROS DESC. manuales
+                // decimal otrosDescManual = manuales
+                //     .Where(m => m.Concepto.Codigo == "OTROS_DESC")
+                //     .Sum(m => m.Valor);
+                // totalDescuentos += otrosDescManual;
 
+                // Aseguramos que los manuales sigan vinculados al contexto
                 foreach (var m in manuales)
                 {
                     if (_db.Entry(m).State == EntityState.Detached)
@@ -293,20 +404,6 @@ namespace BackendCoopSoft.Controllers
 
             await _db.SaveChangesAsync();
             return Ok("Planilla calculada correctamente para Sueldos y Salarios.");
-        }
-
-        private static decimal ObtenerPorcentajeAntiguedad(int antiguedadMeses)
-        {
-            int años = antiguedadMeses / 12;
-
-            if (años < 2) return 0m;
-            if (años < 5) return 0.05m;
-            if (años < 8) return 0.11m;
-            if (años < 11) return 0.18m;
-            if (años < 15) return 0.26m;
-            if (años < 20) return 0.34m;
-            if (años < 25) return 0.42m;
-            return 0.50m;
         }
 
         // ==========================================
