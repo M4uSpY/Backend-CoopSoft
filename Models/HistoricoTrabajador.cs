@@ -1,4 +1,4 @@
-    using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -22,6 +22,15 @@ public class HistoricoTrabajador
 
     [Column("fecha_modificacion", TypeName = "date")]
     public DateTime FechaModificacion { get; set; }
+
+    [Required]
+    [StringLength(30)]
+    [Column("accion")]
+    public string Accion { get; set; } = string.Empty; // CREAR / ACTUALIZAR / INACTIVAR
+
+    [StringLength(300)]
+    [Column("apartados_modificados")]
+    public string ApartadosModificados { get; set; } = string.Empty;
 
     // 🔗 Propiedad de navegación al usuario "dueño" del histórico
     [ForeignKey(nameof(IdTrabajador))]

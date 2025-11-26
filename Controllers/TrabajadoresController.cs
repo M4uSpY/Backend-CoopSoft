@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using AutoMapper;
 using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs.Trabajadores;
@@ -94,6 +96,23 @@ namespace BackendCoopSoft.Controllers
                 await _db.Horarios.AddAsync(horario);
             }
 
+            // Registrar histórico de creación (si conocemos el usuario)
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual is not null)
+            {
+                var historico = new HistoricoTrabajador
+                {
+                    IdTrabajador = trabajador.IdTrabajador,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "CREAR",
+                    ApartadosModificados = "Todos los campos + Horarios"
+                };
+
+                await _db.HistoricosTrabajador.AddAsync(historico);
+            }
+
+
             await _db.SaveChangesAsync();
 
             var trabajadorDTO = _mapper.Map<TrabajadoresListarDTO>(trabajador);
@@ -110,12 +129,27 @@ namespace BackendCoopSoft.Controllers
             if (trabajador == null)
                 return NotFound("Trabajador no encontrado");
 
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual is null)
+                return Unauthorized("No se pudo identificar al usuario que quiere modificar.");
+
             // Eliminar horarios asociados primero
             if (trabajador.Horarios.Any())
                 _db.Horarios.RemoveRange(trabajador.Horarios);
 
             // Eliminar trabajador
             _db.Trabajadores.Remove(trabajador);
+
+            var historico = new HistoricoTrabajador
+            {
+                IdTrabajador = trabajador.IdTrabajador,
+                UsuarioModificoId = idUsuarioActual.Value,
+                FechaModificacion = DateTime.Now,
+                Accion = "INACTIVAR",
+                ApartadosModificados = "EstadoTrabajador"
+            };
+
+            await _db.HistoricosTrabajador.AddAsync(historico);
 
             await _db.SaveChangesAsync();
 
@@ -135,6 +169,23 @@ namespace BackendCoopSoft.Controllers
 
             if (trabajador == null)
                 return NotFound("Trabajador no encontrado");
+
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual is null)
+                return Unauthorized("No se pudo identificar al usuario que modifica.");
+
+            // Guardar estado ANTES
+            var antes = new
+            {
+                trabajador.IdPersona,
+                trabajador.HaberBasico,
+                trabajador.FechaIngreso,
+                trabajador.IdCargo,
+                Horarios = trabajador.Horarios
+                    .Select(h => new { h.DiaSemana, h.HoraEntrada, h.HoraSalida })
+                    .OrderBy(h => h.DiaSemana)
+                    .ToList()
+            };
 
             // Validar duplicados en los horarios del DTO
             var diasDuplicados = trabajadorActualizarDTO.Horarios
@@ -157,17 +208,61 @@ namespace BackendCoopSoft.Controllers
                 _db.Horarios.RemoveRange(trabajador.Horarios);
 
             // Agregar los nuevos horarios
+            var horariosNuevos = new List<Horario>();
             foreach (var horarioDTO in trabajadorActualizarDTO.Horarios)
             {
                 var horario = _mapper.Map<Horario>(horarioDTO);
                 horario.IdTrabajador = trabajador.IdTrabajador;
+                horariosNuevos.Add(horario);
                 await _db.Horarios.AddAsync(horario);
             }
+
+            // Detectar cambios para el histórico
+            List<string> cambios = new();
+
+            if (antes.IdPersona != trabajador.IdPersona) cambios.Add("IdPersona");
+            if (antes.HaberBasico != trabajador.HaberBasico) cambios.Add("HaberBasico");
+            if (antes.FechaIngreso != trabajador.FechaIngreso) cambios.Add("FechaIngreso");
+            if (antes.IdCargo != trabajador.IdCargo) cambios.Add("IdCargo");
+
+            cambios.Add("Horarios");
+
+            if (cambios.Count > 0)
+            {
+                var historico = new HistoricoTrabajador
+                {
+                    IdTrabajador = trabajador.IdTrabajador,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    ApartadosModificados = string.Join(", ", cambios)
+                };
+
+                await _db.HistoricosTrabajador.AddAsync(historico);
+            }
+
+
 
             await _db.SaveChangesAsync();
 
             var trabajadorDTO = _mapper.Map<TrabajadoresListarDTO>(trabajador);
             return Ok(trabajadorDTO);
+        }
+
+        // ================== HELPER: IdUsuarioActual ==================
+
+        private int? ObtenerIdUsuarioActual()
+        {
+            var claimSub = User.FindFirst(JwtRegisteredClaimNames.Sub);
+            var claimNameId = User.FindFirst(ClaimTypes.NameIdentifier);
+            var claim = claimSub ?? claimNameId;
+
+            if (claim is null)
+                return null;
+
+            return int.TryParse(claim.Value, out var idUsuario)
+                ? idUsuario
+                : (int?)null;
         }
 
     }
