@@ -12,7 +12,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
-    // [Authorize(Roles = "Administrador,Casual")]
+    [Authorize(Roles = "Administrador,Casual")]
     [ApiController]
     public class PersonasController : ControllerBase
     {
@@ -70,7 +70,6 @@ namespace BackendCoopSoft.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // ✅ Registrar histórico
             var idUsuarioActual = ObtenerIdUsuarioActual();
             if (idUsuarioActual is not null)
             {

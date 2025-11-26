@@ -23,6 +23,13 @@ public class HistoricoFalta
     [Column("fecha_modificacion", TypeName = "date")]
     public DateTime FechaModificacion { get; set; }
 
+    [Required]
+    [Column("accion", TypeName = "nvarchar(50)")]
+    public string Accion { get; set; } = string.Empty;
+
+    [Column("apartados_modificados", TypeName = "nvarchar(max)")]
+    public string ApartadosModificados { get; set; } = string.Empty;
+
     // 🔗 FK -> Falta
     [ForeignKey(nameof(IdFalta))]
     public Falta Falta { get; set; } = null!;
