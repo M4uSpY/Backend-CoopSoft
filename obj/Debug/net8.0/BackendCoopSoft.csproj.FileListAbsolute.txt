@@ -2383,3 +2383,4 @@ C:\Users\maude\OneDrive\Escritorio\SistemaAct\Backend\Backend-CoopSoft\bin\Debug
 C:\Users\maude\OneDrive\Escritorio\SistemaAct\Backend\Backend-CoopSoft\bin\Debug\net8.0\runtimes\win-x86\native\libwinpthread-1.dll
 C:\Users\maude\OneDrive\Escritorio\SistemaAct\Backend\Backend-CoopSoft\bin\Debug\net8.0\runtimes\win-x86\native\qpdf.dll
 C:\Users\maude\OneDrive\Escritorio\SistemaAct\Backend\Backend-CoopSoft\bin\Debug\net8.0\runtimes\win-x86\native\zlib1.dll
+C:\Users\maude\OneDrive\Escritorio\SistemaAct\Backend\Backend-CoopSoft\bin\Debug\net8.0\BackendCoopSoft.staticwebassets.runtime.json
