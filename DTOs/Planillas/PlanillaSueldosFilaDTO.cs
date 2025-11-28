@@ -6,6 +6,8 @@ public class PlanillaSueldosFilaDTO
 {
     public int Id { get; set; }                    // No (1,2,3,...)
 
+    public int IdTrabajadorPlanilla { get; set; }
+
     public string CarnetIdentidad { get; set; } = string.Empty;
     public string ApellidosNombres { get; set; } = string.Empty;
     public string Nacionalidad { get; set; } = string.Empty;

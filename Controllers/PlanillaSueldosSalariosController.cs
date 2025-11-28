@@ -18,6 +18,8 @@ namespace BackendCoopSoft.Controllers
         // BASE para el bono de antigüedad = 3 x SMN
         private const decimal BASE_BONO_ANT = SMN_2025 * 3m; // 8250 Bs
 
+        private const decimal UMBRAL_RC_IVA = 8000m;
+
         public PlanillaSueldosSalariosController(AppDbContext db)
         {
             _db = db;
@@ -405,6 +407,76 @@ namespace BackendCoopSoft.Controllers
             await _db.SaveChangesAsync();
             return Ok("Planilla calculada correctamente para Sueldos y Salarios.");
         }
+        [HttpPut("trabajador-planilla/{idTrabajadorPlanilla:int}/rc-iva")]
+        public async Task<IActionResult> ActualizarRcIva(
+    int idTrabajadorPlanilla,
+    [FromBody] RcIvaActualizarDTO dto)
+        {
+            if (dto == null)
+                return BadRequest("Datos inválidos.");
+
+            // 1) Buscar la fila de TrabajadorPlanilla
+            var tp = await _db.TrabajadorPlanillas
+                .Include(x => x.TrabajadorPlanillaValors)
+                    .ThenInclude(v => v.Concepto)
+                .FirstOrDefaultAsync(x => x.IdTrabajadorPlanilla == idTrabajadorPlanilla);
+
+            if (tp == null)
+                return NotFound("No existe el registro Trabajador_Planilla.");
+
+            // 2) Obtener el concepto RC_IVA_13
+            var conceptoRcIva = await _db.Conceptos
+                .FirstOrDefaultAsync(c => c.Codigo == "RC_IVA_13");
+
+            if (conceptoRcIva == null)
+                return BadRequest("No existe el concepto RC_IVA_13 en la tabla Concepto.");
+
+            // 3) Buscar si ya hay un valor manual para RC_IVA_13
+            var existente = tp.TrabajadorPlanillaValors
+                .FirstOrDefault(v =>
+                    v.EsManual &&
+                    v.Concepto != null &&
+                    v.Concepto.Codigo == "RC_IVA_13");
+
+            var monto = Math.Round(dto.MontoRcIva, 2);
+
+            if (existente == null)
+            {
+                if (monto <= 0)
+                {
+                    // Nada que crear
+                    return Ok("RC-IVA no registrado (monto <= 0).");
+                }
+
+                // Crear un nuevo registro manual
+                var nuevo = new TrabajadorPlanillaValor
+                {
+                    IdTrabajadorPlanilla = tp.IdTrabajadorPlanilla,
+                    IdConcepto = conceptoRcIva.IdConcepto,
+                    Valor = monto,
+                    EsManual = true
+                };
+                _db.TrabajadorPlanillaValores.Add(nuevo);
+            }
+            else
+            {
+                if (monto <= 0)
+                {
+                    // Si quieres eliminarlo:
+                    // _db.TrabajadorPlanillaValores.Remove(existente);
+
+                    // O dejar el registro y ponerlo en 0:
+                    existente.Valor = 0m;
+                }
+                else
+                {
+                    existente.Valor = monto;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok("RC-IVA actualizado correctamente (valor manual).");
+        }
 
         // ==========================================
         // 4) OBTENER FILAS TIPO EXCEL
@@ -447,10 +519,13 @@ namespace BackendCoopSoft.Controllers
                     var totalGanado = haberBasico + bonoAnt + bonoProd + apCoop;
 
                     var gestora = GetValor(tp, "GESTORA_1221");
-                    var rcIva = GetValor(tp, "RC_IVA_13");
+                    var rcIvaReal = GetValor(tp, "RC_IVA_13");
                     var apSol = GetValor(tp, "AP_SOL_05");
                     var otros668 = GetValor(tp, "OTROS_DESC_668");
                     var otrosDesc = GetValor(tp, "OTROS_DESC");
+
+                    // REGLA DE UMBRAL
+                    var rcIva = totalGanado > UMBRAL_RC_IVA ? rcIvaReal : 0m;
 
                     var totalDesc = gestora + rcIva + apSol + otros668 + otrosDesc;
                     var liquido = totalGanado - totalDesc;
@@ -458,6 +533,8 @@ namespace BackendCoopSoft.Controllers
                     return new PlanillaSueldosFilaDTO
                     {
                         Id = index + 1,
+                        IdTrabajadorPlanilla = tp.IdTrabajadorPlanilla,
+
                         CarnetIdentidad = persona.CarnetIdentidad,
                         ApellidosNombres = string.Join(" ",
                             persona.ApellidoPaterno,

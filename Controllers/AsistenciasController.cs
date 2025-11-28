@@ -49,8 +49,6 @@ namespace BackendCoopSoft.Controllers
 
             // =========================================================
             // 0) LICENCIAS APROBADAS
-            //    Si el trabajador tiene una licencia aprobada que cubre
-            //    esta fecha y hora, NO se permite marcar asistencia.
             // =========================================================
             if (await TrabajadorEnLicenciaAsync(dto.IdTrabajador, fechaHoraMarcacion))
             {
@@ -63,7 +61,7 @@ namespace BackendCoopSoft.Controllers
             }
 
             // =========================================================
-            // 1) VACACIONES APROBADAS (Solicitud)
+            // 1) VACACIONES / PERMISOS APROBADOS (Solicitud)
             // =========================================================
             var vacacionHoy = await _db.Solicitudes
                 .Include(s => s.EstadoSolicitud)
@@ -80,12 +78,12 @@ namespace BackendCoopSoft.Controllers
                 {
                     Registrado = false,
                     TipoMarcacion = "EN_PROCESO",
-                    Mensaje = "No es posible registrar asistencia porque el trabajador se encuentra de vacación en esta fecha."
+                    Mensaje = "No es posible registrar asistencia porque el trabajador se encuentra de vacación o con un permiso aprobado en esta fecha."
                 });
             }
 
             // =========================================================
-            // 2) Buscar trabajador + horarios
+            // 2) Trabajador + Horario
             // =========================================================
             var trabajador = await _db.Trabajadores
                 .Include(t => t.Horarios)
@@ -115,25 +113,31 @@ namespace BackendCoopSoft.Controllers
                 {
                     Registrado = false,
                     TipoMarcacion = "EN_PROCESO",
-                    Mensaje = "El trabajador no tiene un horario definido para hoy."
+                    Mensaje = "El trabajador no tiene un horario asignado para el día de hoy."
                 });
             }
 
             // =========================================================
-            // 3) Asistencias registradas hoy
+            // 3) Asistencias del día
             // =========================================================
             var asistenciasHoy = await _db.Asistencias
                 .Where(a => a.IdTrabajador == dto.IdTrabajador && a.Fecha == hoy)
                 .OrderBy(a => a.Hora)
                 .ToListAsync();
 
-            // Convertir a DateTime para cálculos
             var horaMarcada = hoy + dto.Hora;
-            var horaEntradaProgramada = hoy + horarioHoy.HoraEntrada;
 
-            // ====================================================================
-            // ============================  PRIMERA MARCACIÓN  ===================
-            // ====================================================================
+            // ⭐ NUEVO: ajustar hora de entrada esperada según licencias
+            var horaEntradaReprogramada = await ObtenerHoraEntradaEsperadaAsync(
+                dto.IdTrabajador,
+                hoy,
+                horarioHoy.HoraEntrada);
+
+            var horaEntradaProgramada = hoy + horaEntradaReprogramada;
+
+            // =========================================================
+            // 4) PRIMERA MARCACIÓN (ENTRADA)
+            // =========================================================
             if (!asistenciasHoy.Any())
             {
                 // Rango permitido para ENTRADA: ±30 minutos
@@ -151,11 +155,14 @@ namespace BackendCoopSoft.Controllers
                     });
                 }
 
-                // Cálculo de minutos de retraso respecto a la hora de entrada programada
-                var minutosRetraso = (horaMarcada - horaEntradaProgramada).TotalMinutes;
-                bool esAtrasado = minutosRetraso > MINUTOS_TOLERANCIA_RETRASO;
+                // Tolerancia de 2 minutos antes de considerar atraso
+                var limiteSinAtraso = horaEntradaProgramada.AddMinutes(2);
+                bool esAtrasado = horaMarcada > limiteSinAtraso;
 
-                // Registrar ENTRADA
+                double minutosRetraso = 0;
+                if (esAtrasado)
+                    minutosRetraso = (horaMarcada - horaEntradaProgramada).TotalMinutes;
+
                 var asistenciaEntrada = _mapper.Map<Asistencia>(dto);
                 asistenciaEntrada.Fecha = hoy;
                 asistenciaEntrada.Hora = dto.Hora;
@@ -163,13 +170,13 @@ namespace BackendCoopSoft.Controllers
 
                 _db.Asistencias.Add(asistenciaEntrada);
 
-                // Si está atrasado, generamos una FALTA (tipo ATRASO) si aún no existe hoy
+                // FALTA POR ATRASO (si corresponde)
                 if (esAtrasado)
                 {
                     bool yaTieneFaltaHoy = await _db.Faltas
                         .AnyAsync(f => f.IdTrabajador == dto.IdTrabajador
-                                    && f.Fecha == hoy
-                                    && f.IdTipoFalta == ID_TIPO_FALTA_ATRASO);
+                                       && f.Fecha == hoy
+                                       && f.IdTipoFalta == ID_TIPO_FALTA_ATRASO);
 
                     if (!yaTieneFaltaHoy)
                     {
@@ -187,48 +194,50 @@ namespace BackendCoopSoft.Controllers
                     }
                 }
 
-                // Guardamos ENTRADA (+ posible falta) en un solo SaveChanges
+                // Guardamos ENTRADA (+ posible falta)
                 await _db.SaveChangesAsync();
 
                 string mensajeEntrada = esAtrasado
-                    ? $"Entrada registrada a las {horaMarcada:HH:mm}, con atraso de {Math.Round(minutosRetraso)} minuto(s). Se generó una falta por atraso."
+                    ? $"Entrada registrada a las {horaMarcada:HH:mm}. Llegó {Math.Round(minutosRetraso)} minuto(s) tarde. Se generó una falta por atraso."
                     : $"Entrada registrada correctamente a las {horaMarcada:HH:mm}.";
 
                 return Ok(new AsistenciaRegistrarResultadoDTO
                 {
                     Registrado = true,
                     TipoMarcacion = "ENTRADA",
-                    HoraEntrada = horaMarcada,
+                    HoraEntrada = hoy + asistenciaEntrada.Hora,
                     Mensaje = mensajeEntrada
                 });
             }
 
-            // ====================================================================
-            // ================  YA HAY ENTRADA, VEAMOS SI ES SALIDA  =============
-            // ====================================================================
+            // =========================================================
+            // 5) SEGUNDA MARCACIÓN (SALIDA)
+            // =========================================================
             var entrada = asistenciasHoy.FirstOrDefault(a => a.EsEntrada);
-            var salida = asistenciasHoy.FirstOrDefault(a => !a.EsEntrada);
+            var salidaRegistrada = asistenciasHoy.FirstOrDefault(a => !a.EsEntrada);
 
-            // Si ya existe salida → fin
-            if (entrada != null && salida != null)
+            if (entrada is null)
             {
-                var dtEntrada = hoy + entrada.Hora;
-                var dtSalida = hoy + salida.Hora;
-                var diff = dtSalida - dtEntrada;
-
                 return Ok(new AsistenciaRegistrarResultadoDTO
                 {
                     Registrado = false,
-                    TipoMarcacion = "SALIDA",
-                    HoraEntrada = dtEntrada,
-                    HoraSalida = dtSalida,
-                    HorasTrabajadas = $"{(int)diff.TotalHours:D2}:{diff.Minutes:D2}",
+                    TipoMarcacion = "EN_PROCESO",
+                    Mensaje = "No existe una ENTRADA registrada para hoy. Primero debe registrar la ENTRADA."
+                });
+            }
+
+            if (salidaRegistrada != null)
+            {
+                return Ok(new AsistenciaRegistrarResultadoDTO
+                {
+                    Registrado = false,
+                    TipoMarcacion = "COMPLETADO",
                     Mensaje = "Ya registraste ENTRADA y SALIDA hoy."
                 });
             }
 
-            // Validamos tiempo mínimo para poder marcar salida
-            var horaEntradaReal = hoy + entrada!.Hora;
+            // Tiempo mínimo para poder marcar salida
+            var horaEntradaReal = hoy + entrada.Hora;
             var minimoSalida = horaEntradaReal.AddMinutes(MINUTOS_MINIMOS_JORNADA);
 
             if (horaMarcada < minimoSalida)
@@ -241,13 +250,10 @@ namespace BackendCoopSoft.Controllers
                     TipoMarcacion = "EN_PROCESO",
                     HoraEntrada = horaEntradaReal,
                     Mensaje = $"Aún no puede marcar SALIDA. " +
-                              $"Faltan {faltan.Minutes:D2} minuto(s) para completar la jornada."
+                              $"Faltan {faltan.Minutes:D2} minuto(s) para completar la jornada mínima."
                 });
             }
 
-            // ====================================================================
-            // ==============================  SALIDA  =============================
-            // ====================================================================
             var asistenciaSalida = _mapper.Map<Asistencia>(dto);
             asistenciaSalida.Fecha = hoy;
             asistenciaSalida.Hora = dto.Hora;
@@ -256,21 +262,15 @@ namespace BackendCoopSoft.Controllers
             _db.Asistencias.Add(asistenciaSalida);
             await _db.SaveChangesAsync();
 
-            var horasTrabajadas = horaMarcada - horaEntradaReal;
-            var horasFormateadas = $"{(int)horasTrabajadas.TotalHours:D2}:{horasTrabajadas.Minutes:D2}";
-
             return Ok(new AsistenciaRegistrarResultadoDTO
             {
                 Registrado = true,
                 TipoMarcacion = "SALIDA",
-                HoraEntrada = horaEntradaReal,
-                HoraSalida = horaMarcada,
-                HorasTrabajadas = horasFormateadas,
-                Mensaje = $"Salida registrada a las {horaMarcada:HH:mm}. " +
-                          $"Tiempo trabajado: {horasFormateadas}."
+                HoraEntrada = hoy + entrada.Hora,
+                HoraSalida = hoy + asistenciaSalida.Hora,
+                Mensaje = $"Salida registrada correctamente a las {horaMarcada:HH:mm}."
             });
         }
-
 
         private async Task<bool> TrabajadorEnLicenciaAsync(int idTrabajador, DateTime fechaHoraMarcacion)
         {
@@ -295,6 +295,41 @@ namespace BackendCoopSoft.Controllers
             }
 
             return false;
+        }
+
+        private async Task<TimeSpan> ObtenerHoraEntradaEsperadaAsync(int idTrabajador, DateTime fecha, TimeSpan horaEntradaHorario)
+        {
+            var licencias = await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Where(l =>
+                    l.IdTrabajador == idTrabajador &&
+                    l.FechaInicio <= fecha &&
+                    l.FechaFin >= fecha &&
+                    l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
+                    l.EstadoLicencia.ValorCategoria == "Aprobado")
+                .ToListAsync();
+
+            var horaEsperada = horaEntradaHorario;
+
+            foreach (var l in licencias)
+            {
+                var inicio = (l.FechaInicio.Date == fecha.Date)
+                    ? l.HoraInicio
+                    : TimeSpan.Zero;
+
+                var fin = (l.FechaFin.Date == fecha.Date)
+                    ? l.HoraFin
+                    : new TimeSpan(23, 59, 59);
+
+                // Si la licencia cubre la hora de entrada normal, corremos la hora de entrada al fin de la licencia
+                if (inicio <= horaEntradaHorario && fin > horaEntradaHorario)
+                {
+                    if (fin > horaEsperada)
+                        horaEsperada = fin;
+                }
+            }
+
+            return horaEsperada;
         }
     }
 }
