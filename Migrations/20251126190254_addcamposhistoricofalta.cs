@@ -5,7 +5,7 @@
 namespace BackendCoopSoft.Migrations
 {
     /// <inheritdoc />
-    public partial class addcamposhistoricofalta : Migration
+    public partial class AddCamposHistoricoFalta : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

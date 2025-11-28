@@ -13,7 +13,7 @@ namespace BackendCoopSoft.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251126190254_addcamposhistoricofalta")]
-    partial class addcamposhistoricofalta
+    partial class AddCamposHistoricoFalta
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
