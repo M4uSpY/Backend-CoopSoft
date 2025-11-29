@@ -193,6 +193,9 @@ namespace BackendCoopSoft.Controllers
         {
             QuestPDF.Settings.License = LicenseType.Community;
 
+            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img/Logo_Cooperativa.png");
+            var logoBytes = System.IO.File.ReadAllBytes(logoPath);
+
             var doc = Document.Create(container =>
             {
                 container.Page(page =>
@@ -200,10 +203,17 @@ namespace BackendCoopSoft.Controllers
                     page.Margin(20);
                     page.Size(PageSizes.A4);
 
-                    page.Header().Text("PAPELETA DE PAGO")
-                        .FontSize(18)
-                        .Bold()
-                        .AlignCenter();
+                    page.Header().Row(row =>
+                    {
+                        row.ConstantItem(70)
+                            .Image(logoBytes);  // ← AQUI EL LOGO
+
+                        row.RelativeItem()
+                            .Text("PAPELETA DE PAGO")
+                            .FontSize(18)
+                            .Bold()
+                            .AlignCenter();
+                    });
 
                     page.Content().Column(col =>
                     {
