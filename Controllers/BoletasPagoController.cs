@@ -1,6 +1,7 @@
 using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs.BoletasPago;
 using BackendCoopSoft.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
@@ -11,6 +12,7 @@ using System.Globalization;
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize(Roles = "Administrador,Casual")]
     [ApiController]
     public class BoletasPagoController : ControllerBase
     {

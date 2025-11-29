@@ -26,6 +26,7 @@ namespace BackendCoopSoft.Controllers
         {
             var capacitaciones = await _db.Capacitaciones
                 .Where(c => c.IdTrabajador == idTrabajador)
+                .AsNoTracking()
                 .ToListAsync();
 
             var dto = _mapper.Map<List<CapacitacionResumenDTO>>(capacitaciones);
@@ -50,6 +51,10 @@ namespace BackendCoopSoft.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            const int maxCertBytes = 2 * 1024 * 1024; // 2 MB
+            if (dto.ArchivoCertificado != null && dto.ArchivoCertificado.Length > maxCertBytes)
+                return BadRequest("El archivo del certificado no debe superar los 2 MB.");
 
             // validar que exista el trabajador
             var existeTrabajador = await _db.Trabajadores
@@ -78,6 +83,10 @@ namespace BackendCoopSoft.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            const int maxCertBytes = 2 * 1024 * 1024; // 2 MB
+            if (dto.ArchivoCertificado != null && dto.ArchivoCertificado.Length > maxCertBytes)
+                return BadRequest("El archivo del certificado no debe superar los 2 MB.");
 
             var capacitacion = await _db.Capacitaciones
                 .FirstOrDefaultAsync(c => c.IdCapacitacion == id);

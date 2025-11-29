@@ -55,6 +55,13 @@ namespace BackendCoopSoft.Controllers
             {
                 return BadRequest("La persona no puede ser nula");
             }
+
+            // VALIDACION DE TAMANIO DE IMAGEN
+
+            const int maxFotoBytes = 2 * 1024 * 1024; // 2 MB
+            if (personaCrearDTO.Foto != null && personaCrearDTO.Foto.Length > maxFotoBytes)
+                return BadRequest("La foto no debe superar los 2 MB.");
+
             var persona = _mapper.Map<Persona>(personaCrearDTO);
             await _db.Personas.AddAsync(persona);
             await _db.SaveChangesAsync();
@@ -100,6 +107,10 @@ namespace BackendCoopSoft.Controllers
             var idUsuarioActual = ObtenerIdUsuarioActual();
             if (idUsuarioActual is null)
                 return Unauthorized("No se pudo identificar al usuario que modifica.");
+
+            const int maxFotoBytes = 2 * 1024 * 1024; // 2 MB
+            if (personaActualizarDTO.Foto != null && personaActualizarDTO.Foto.Length > maxFotoBytes)
+                return BadRequest("La foto no debe superar los 2 MB.");
 
             var antes = new
             {
@@ -198,7 +209,7 @@ namespace BackendCoopSoft.Controllers
                 ApartadosModificados = "EstadoUsuario"
             };
 
-            
+
             await _db.SaveChangesAsync();
             return NoContent();
         }

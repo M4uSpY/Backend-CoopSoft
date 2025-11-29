@@ -3,12 +3,14 @@ using AutoMapper;
 using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs.Asistencia;
 using BackendCoopSoft.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize(Roles = "Administrador")]
     [ApiController]
     public class AsistenciasController : ControllerBase
     {
