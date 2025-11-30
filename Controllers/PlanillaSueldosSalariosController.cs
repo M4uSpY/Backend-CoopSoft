@@ -614,5 +614,31 @@ namespace BackendCoopSoft.Controllers
             await _db.SaveChangesAsync();
             return Ok("Planilla cerrada correctamente.");
         }
+
+        [HttpGet("buscar")]
+        public async Task<ActionResult<PlanillaResumenDTO>> BuscarPorPeriodo([FromQuery] int gestion,[FromQuery] int mes,[FromQuery] int idTipoPlanilla = 31)   // 31 = Sueldos y Salarios
+        {
+            var p = await _db.Planillas
+                .FirstOrDefaultAsync(x =>
+                    x.IdTipoPlanilla == idTipoPlanilla &&
+                    x.Gestion == gestion &&
+                    x.Mes == mes);
+
+            if (p == null)
+                return NotFound("No existe una planilla de Sueldos y Salarios para esa gestión y mes.");
+
+            var dto = new PlanillaResumenDTO
+            {
+                IdPlanilla = p.IdPlanilla,
+                IdTipoPlanilla = p.IdTipoPlanilla,
+                Gestion = p.Gestion,
+                Mes = p.Mes,
+                PeriodoDesde = p.PeriodoDesde,
+                PeriodoHasta = p.PeriodoHasta,
+                EstaCerrada = p.EstaCerrada
+            };
+
+            return Ok(dto);
+        }
     }
 }
