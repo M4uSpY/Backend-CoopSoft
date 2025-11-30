@@ -4,15 +4,19 @@ using BackendCoopSoft.DTOs.Licencias;
 using BackendCoopSoft.Models;
 using BackendCoopSoft.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BackendCoopSoft.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class LicenciasController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private const string CARGO_ADMIN = "Administrador General";
     private const int ID_TIPO_LICENCIA_PERMISO_TEMPORAL = 25; // <-- CAMBIA ESTO
 
     public LicenciasController(AppDbContext db)
@@ -20,37 +24,105 @@ public class LicenciasController : ControllerBase
         _db = db;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> ObtenerLicencias()
+    private string? GetRolUsuarioActual()
     {
-        var licencias = await _db.Licencias
-            .Include(l => l.Trabajador).ThenInclude(t => t.Persona)
-            .Include(l => l.Trabajador).ThenInclude(t => t.Cargo)
-            .Include(l => l.TipoLicencia)
-            .Include(l => l.EstadoLicencia)
-            .ToListAsync();
-
-        var dto = licencias.Select(l => new LicenciaListarDTO
-        {
-            IdLicencia = l.IdLicencia,
-            IdTrabajador = l.IdTrabajador,
-            CI = l.Trabajador.Persona.CarnetIdentidad,
-            ApellidosNombres = $"{l.Trabajador.Persona.ApellidoPaterno} {l.Trabajador.Persona.ApellidoMaterno} {l.Trabajador.Persona.PrimerNombre}",
-            Cargo = l.Trabajador.Cargo.NombreCargo,
-            TipoLicencia = l.TipoLicencia.ValorCategoria,
-            FechaInicio = l.FechaInicio,
-            FechaFin = l.FechaFin,
-            HoraInicio = l.HoraInicio,
-            HoraFin = l.HoraFin,
-            CantidadJornadas = l.CantidadJornadas,
-            Estado = l.EstadoLicencia.ValorCategoria,
-            Motivo = l.Motivo,
-            Observacion = l.Observacion,
-            TieneArchivoJustificativo = l.ArchivoJustificativo != null && l.ArchivoJustificativo.Length > 0
-        }).ToList();
-
-        return Ok(dto);
+        return User.FindFirst(ClaimTypes.Role)?.Value;
     }
+
+    private static bool EsCargoAdministrador(string? nombreCargo)
+    {
+        if (string.IsNullOrWhiteSpace(nombreCargo))
+            return false;
+
+        return string.Equals(nombreCargo.Trim(), CARGO_ADMIN, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool EsCargoCasual(string? nombreCargo)
+    {
+        return !EsCargoAdministrador(nombreCargo);
+    }
+
+    private static bool PuedeGestionarSegunRol(string? rolActual, string? nombreCargoTrabajador)
+    {
+        if (string.IsNullOrWhiteSpace(rolActual))
+            return false;
+
+        rolActual = rolActual.Trim();
+
+        if (string.Equals(rolActual, "Consejo", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(rolActual, "Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(rolActual, "Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+        {
+            return EsCargoAdministrador(nombreCargoTrabajador);
+        }
+
+        if (string.Equals(rolActual, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(rolActual, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return EsCargoCasual(nombreCargoTrabajador);
+        }
+
+        return false;
+    }
+
+    [HttpGet]
+public async Task<IActionResult> ObtenerLicencias()
+{
+    var rolActual = GetRolUsuarioActual();
+    if (string.IsNullOrWhiteSpace(rolActual))
+        return Forbid("No se pudo determinar el rol del usuario actual.");
+
+    var rol = rolActual.Trim();
+
+    var query = _db.Licencias
+        .Include(l => l.Trabajador).ThenInclude(t => t.Persona)
+        .Include(l => l.Trabajador).ThenInclude(t => t.Cargo)
+        .Include(l => l.TipoLicencia)
+        .Include(l => l.EstadoLicencia)
+        .AsQueryable();
+
+    // Consejo -> solo "Administrador General"
+    if (rol.Equals("Consejo", StringComparison.OrdinalIgnoreCase) ||
+        rol.Equals("Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
+        rol.Equals("Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+    {
+        query = query.Where(l => l.Trabajador.Cargo.NombreCargo == CARGO_ADMIN);
+    }
+    // Administrador -> todos MENOS "Administrador General"
+    else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+             rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+    {
+        query = query.Where(l => l.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
+    }
+    else
+    {
+        return Forbid("No tiene permisos para ver la lista de licencias.");
+    }
+
+    var licencias = await query.ToListAsync();
+
+    var dto = licencias.Select(l => new LicenciaListarDTO
+    {
+        IdLicencia = l.IdLicencia,
+        IdTrabajador = l.IdTrabajador,
+        CI = l.Trabajador.Persona.CarnetIdentidad,
+        ApellidosNombres = $"{l.Trabajador.Persona.ApellidoPaterno} {l.Trabajador.Persona.ApellidoMaterno} {l.Trabajador.Persona.PrimerNombre}",
+        Cargo = l.Trabajador.Cargo.NombreCargo,
+        TipoLicencia = l.TipoLicencia.ValorCategoria,
+        FechaInicio = l.FechaInicio,
+        FechaFin = l.FechaFin,
+        HoraInicio = l.HoraInicio,
+        HoraFin = l.HoraFin,
+        CantidadJornadas = l.CantidadJornadas,
+        Estado = l.EstadoLicencia.ValorCategoria,
+        Motivo = l.Motivo,
+        Observacion = l.Observacion,
+        TieneArchivoJustificativo = l.ArchivoJustificativo != null && l.ArchivoJustificativo.Length > 0
+    }).ToList();
+
+    return Ok(dto);
+}
+
 
     [HttpGet("trabajador/{idTrabajador:int}")]
     public async Task<IActionResult> ObtenerLicenciasPorTrabajador(int idTrabajador)
@@ -347,14 +419,24 @@ public class LicenciasController : ControllerBase
     [HttpPut("{id:int}/aprobar")]
     public async Task<IActionResult> AprobarLicencia(int id)
     {
+        var rolActual = GetRolUsuarioActual();
+        if (string.IsNullOrWhiteSpace(rolActual))
+            return Forbid("No se pudo determinar el rol del usuario actual.");
+
         var licencia = await _db.Licencias
+            .Include(l => l.Trabajador)
+                .ThenInclude(t => t.Cargo)
             .Include(l => l.EstadoLicencia)
             .FirstOrDefaultAsync(l => l.IdLicencia == id);
 
         if (licencia is null)
             return NotFound("Licencia no encontrada.");
 
-        // Buscar Id de "Aprobado" en Clasificador (EstadoSolicitud)
+        var cargoTrabajador = licencia.Trabajador?.Cargo?.NombreCargo;
+
+        if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
+            return Forbid("No tiene permiso para aprobar la licencia de este trabajador.");
+
         var idAprobado = await _db.Clasificadores
             .Where(c => c.Categoria == "EstadoSolicitud" && c.ValorCategoria == "Aprobado")
             .Select(c => c.IdClasificador)
@@ -374,13 +456,23 @@ public class LicenciasController : ControllerBase
     [HttpPut("{id:int}/rechazar")]
     public async Task<IActionResult> RechazarLicencia(int id)
     {
+        var rolActual = GetRolUsuarioActual();
+        if (string.IsNullOrWhiteSpace(rolActual))
+            return Forbid("No se pudo determinar el rol del usuario actual.");
+
         var licencia = await _db.Licencias
+            .Include(l => l.Trabajador)
+                .ThenInclude(t => t.Cargo)
             .FirstOrDefaultAsync(l => l.IdLicencia == id);
 
         if (licencia is null)
             return NotFound("Licencia no encontrada.");
 
-        // Buscar Id de "Rechazado" en Clasificador (EstadoSolicitud)
+        var cargoTrabajador = licencia.Trabajador?.Cargo?.NombreCargo;
+
+        if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
+            return Forbid("No tiene permiso para rechazar la licencia de este trabajador.");
+
         var idRechazado = await _db.Clasificadores
             .Where(c => c.Categoria == "EstadoSolicitud" && c.ValorCategoria == "Rechazado")
             .Select(c => c.IdClasificador)

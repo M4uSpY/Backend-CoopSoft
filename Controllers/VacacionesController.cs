@@ -2,19 +2,70 @@ using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs.VacacionesPermisos;
 using BackendCoopSoft.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class VacacionesController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private const string CARGO_ADMIN = "Administrador General";
 
         public VacacionesController(AppDbContext db)
         {
             _db = db;
+        }
+
+        private string? GetRolUsuarioActual()
+        {
+            // Tu JWT usa ClaimTypes.Role
+            return User.FindFirst(ClaimTypes.Role)?.Value;
+        }
+
+        private static bool EsCargoAdministrador(string? nombreCargo)
+        {
+            if (string.IsNullOrWhiteSpace(nombreCargo))
+                return false;
+
+            return string.Equals(nombreCargo.Trim(), CARGO_ADMIN, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsCargoCasual(string? nombreCargo)
+        {
+            // En tu caso: cualquier cargo que NO sea "Administrador General"
+            return !EsCargoAdministrador(nombreCargo);
+        }
+
+        // nombreCargoTrabajador = trabajador.Cargo.NombreCargo
+        private static bool PuedeGestionarSegunRol(string? rolActual, string? nombreCargoTrabajador)
+        {
+            if (string.IsNullOrWhiteSpace(rolActual))
+                return false;
+
+            rolActual = rolActual.Trim();
+
+            // 👉 Consejo: solo tramita solicitudes de trabajadores con cargo "Administrador General"
+            if (string.Equals(rolActual, "Consejo", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(rolActual, "Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(rolActual, "Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+            {
+                return EsCargoAdministrador(nombreCargoTrabajador);
+            }
+
+            // 👉 Administrador: solo tramita solicitudes de trabajadores "casuales"
+            if (string.Equals(rolActual, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(rolActual, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return EsCargoCasual(nombreCargoTrabajador);
+            }
+
+            // Otros roles no deberían gestionar nada
+            return false;
         }
 
         // ===================== CALENDARIO (SOLO VACACIONES) =====================
@@ -29,8 +80,6 @@ namespace BackendCoopSoft.Controllers
                 {
                     IdVacacion = s.IdVacacion,
                     Trabajador = s.Trabajador.Persona.PrimerNombre + " " + s.Trabajador.Persona.ApellidoPaterno,
-                    // Antes estaba s.TipoSolicitud.ValorCategoria
-                    // Ahora todas son vacaciones → valor fijo
                     TipoSolicitud = "Vacación",
                     EstadoSolicitud = s.EstadoSolicitud.ValorCategoria,
                     FechaInicio = s.FechaInicio,
@@ -41,50 +90,90 @@ namespace BackendCoopSoft.Controllers
             return Ok(solicitudesVacaciones);
         }
 
-        // ==================== LISTA PARA ADMIN =====================
+        // ==================== LISTA PARA ADMIN/CONSEJO =====================
         [HttpGet]
-        public async Task<IActionResult> ObtenerSolicitudes()
-        {
-            var solicitudesVacaciones = await _db.Vacaciones
-                .Include(s => s.Trabajador)
-                    .ThenInclude(t => t.Persona)
-                .Include(s => s.Trabajador)
-                    .ThenInclude(t => t.Cargo)
-                .Include(s => s.EstadoSolicitud)
-                .Select(s => new SolicitudVacListarDTO
-                {
-                    IdVacacion = s.IdVacacion,
-                    CI = s.Trabajador.Persona.CarnetIdentidad,
-                    ApellidosNombres =
-                        s.Trabajador.Persona.ApellidoPaterno + " " +
-                        s.Trabajador.Persona.ApellidoMaterno + " " +
-                        s.Trabajador.Persona.PrimerNombre,
-                    Cargo = s.Trabajador.Cargo.NombreCargo,
-                    // Antes venía de TipoSolicitud.ValorCategoria
-                    Tipo = "Vacación",
-                    Motivo = s.Motivo,
-                    FechaInicio = s.FechaInicio,
-                    FechaFin = s.FechaFin,
-                    Estado = s.EstadoSolicitud.ValorCategoria
-                })
-                .ToListAsync();
+public async Task<IActionResult> ObtenerSolicitudes()
+{
+    var rolActual = GetRolUsuarioActual();
+    if (string.IsNullOrWhiteSpace(rolActual))
+        return Forbid("No se pudo determinar el rol del usuario actual.");
 
-            return Ok(solicitudesVacaciones);
-        }
+    var rol = rolActual.Trim();
+
+    var query = _db.Vacaciones
+        .Include(s => s.Trabajador)
+            .ThenInclude(t => t.Persona)
+        .Include(s => s.Trabajador)
+            .ThenInclude(t => t.Cargo)
+        .Include(s => s.EstadoSolicitud)
+        .AsQueryable();
+
+    // Consejo → solo "Administrador General"
+    if (rol.Equals("Consejo", StringComparison.OrdinalIgnoreCase) ||
+        rol.Equals("Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
+        rol.Equals("Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+    {
+        query = query.Where(s => s.Trabajador.Cargo.NombreCargo == CARGO_ADMIN);
+    }
+    // Administrador → solo casuales (no "Administrador General")
+    else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+             rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+    {
+        query = query.Where(s => s.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
+    }
+    else
+    {
+        return Forbid("No tiene permisos para ver la lista de solicitudes de vacación.");
+    }
+
+    var solicitudesVacaciones = await query
+        .Select(s => new SolicitudVacListarDTO
+        {
+            IdVacacion = s.IdVacacion,
+            CI = s.Trabajador.Persona.CarnetIdentidad,
+            ApellidosNombres =
+                s.Trabajador.Persona.ApellidoPaterno + " " +
+                s.Trabajador.Persona.ApellidoMaterno + " " +
+                s.Trabajador.Persona.PrimerNombre,
+            Cargo = s.Trabajador.Cargo.NombreCargo,
+            Tipo = "Vacación",
+            Motivo = s.Motivo,
+            FechaInicio = s.FechaInicio,
+            FechaFin = s.FechaFin,
+            Estado = s.EstadoSolicitud.ValorCategoria
+        })
+        .ToListAsync();
+
+    return Ok(solicitudesVacaciones);
+}
+
 
         // ==================== APROBAR VACACIÓN =====================
         [HttpPut("{id:int}/aprobar")]
         public async Task<IActionResult> AprobarSolicitud(int id)
         {
+            // 1) Rol del usuario actual
+            var rolActual = GetRolUsuarioActual();
+            if (string.IsNullOrWhiteSpace(rolActual))
+                return Forbid("No se pudo determinar el rol del usuario actual.");
+
             var solicitudesVacacion = await _db.Vacaciones
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Persona)
+                .Include(s => s.Trabajador)
+                    .ThenInclude(t => t.Cargo)
                 .FirstOrDefaultAsync(s => s.IdVacacion == id);
 
             if (solicitudesVacacion is null)
                 return NotFound();
 
-            // Ahora TODAS las solicitudes de esta tabla son VACACIONES
+            var cargoTrabajador = solicitudesVacacion.Trabajador?.Cargo?.NombreCargo;
+
+            // 2) Validar permiso según rol y cargo
+            if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
+                return Forbid("No tiene permiso para aprobar la vacación de este trabajador.");
+
+            // 3) Lógica de negocio de vacaciones (lo que ya tenías)
             bool descuentaVacacion = true;
 
             if (descuentaVacacion)
@@ -136,12 +225,26 @@ namespace BackendCoopSoft.Controllers
         [HttpPut("{id:int}/rechazar")]
         public async Task<IActionResult> RechazarSolicitud(int id)
         {
+            // 1) Rol del usuario actual
+            var rolActual = GetRolUsuarioActual();
+            if (string.IsNullOrWhiteSpace(rolActual))
+                return Forbid("No se pudo determinar el rol del usuario actual.");
+
             var solicitudVacacion = await _db.Vacaciones
+                .Include(s => s.Trabajador)
+                    .ThenInclude(t => t.Cargo)
                 .FirstOrDefaultAsync(s => s.IdVacacion == id);
 
             if (solicitudVacacion is null)
                 return NotFound();
 
+            var cargoTrabajador = solicitudVacacion.Trabajador?.Cargo?.NombreCargo;
+
+            // 2) Validar permiso
+            if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
+                return Forbid("No tiene permiso para rechazar la vacación de este trabajador.");
+
+            // 3) Lógica normal de rechazo
             var idRechazado = await _db.Clasificadores
                 .Where(c => c.Categoria == "EstadoSolicitud" && c.ValorCategoria == "Rechazado")
                 .Select(c => c.IdClasificador)
@@ -171,19 +274,15 @@ namespace BackendCoopSoft.Controllers
             if (!trabajadorExiste)
                 return BadRequest("El trabajador indicado no existe.");
 
-            // 
             var fechaInicio = dto.FechaInicio.Date;
             var fechaFin = dto.FechaFin.Date;
 
-            // ============================
-            //  1) EVITAR SOLAPAMIENTO CON OTRAS VACACIONES
-            // ============================
+            // 1) solapamiento con otras vacaciones
             var vacacionesSolapadas = await _db.Vacaciones
                 .Include(s => s.EstadoSolicitud)
                 .Where(s =>
                     s.IdTrabajador == dto.IdTrabajador &&
                     s.EstadoSolicitud.ValorCategoria != "Rechazado" &&
-                    // Rango de fechas solapado:
                     s.FechaInicio <= fechaFin &&
                     s.FechaFin >= fechaInicio)
                 .ToListAsync();
@@ -199,16 +298,13 @@ namespace BackendCoopSoft.Controllers
                     $"No se permiten vacaciones que se solapen en fechas.");
             }
 
-            // ============================
-            //  2) EVITAR SOLAPAMIENTO CON LICENCIAS
-            // ============================
+            // 2) solapamiento con licencias
             var licenciasSolapadas = await _db.Licencias
                 .Include(l => l.EstadoLicencia)
                 .Include(l => l.TipoLicencia)
                 .Where(l =>
                     l.IdTrabajador == dto.IdTrabajador &&
                     l.EstadoLicencia.ValorCategoria != "Rechazado" &&
-                    // Rango de fechas solapado:
                     l.FechaInicio <= fechaFin &&
                     l.FechaFin >= fechaInicio)
                 .ToListAsync();
@@ -224,7 +320,6 @@ namespace BackendCoopSoft.Controllers
                     "No se puede solicitar vacación sobre días cubiertos por licencias.");
             }
 
-            // Estado "Pendiente"
             var estadoPendiente = await _db.Clasificadores
                 .FirstOrDefaultAsync(c =>
                     c.Categoria == "EstadoSolicitud" &&
@@ -239,8 +334,8 @@ namespace BackendCoopSoft.Controllers
                 IdEstadoSolicitud = estadoPendiente.IdClasificador,
                 Motivo = dto.Motivo,
                 Observacion = dto.Observacion,
-                FechaInicio = dto.FechaInicio.Date,
-                FechaFin = dto.FechaFin.Date,
+                FechaInicio = fechaInicio,
+                FechaFin = fechaFin,
                 FechaSolicitud = DateTime.Today,
                 FechaAprobacion = null
             };
@@ -307,7 +402,6 @@ namespace BackendCoopSoft.Controllers
             return anios;
         }
 
-        // Días de vacación por ley en Bolivia
         private static int ObtenerDiasVacacionPorAntiguedad(int anios)
         {
             if (anios < 1) return 0;
@@ -316,7 +410,6 @@ namespace BackendCoopSoft.Controllers
             return 30;
         }
 
-        // Cuenta días hábiles (lunes a viernes) entre dos fechas inclusive
         private static int ContarDiasHabiles(DateTime inicio, DateTime fin)
         {
             int dias = 0;
@@ -331,7 +424,6 @@ namespace BackendCoopSoft.Controllers
             return dias;
         }
 
-        // Días ya usados en el año (ahora SOLO vacaciones, porque esta tabla ya no guarda permisos)
         private async Task<int> CalcularDiasVacacionUsadosAsync(int idTrabajador, int gestion, int idSolicitudActual = 0)
         {
             var solicitudesVacacion = await _db.Vacaciones
