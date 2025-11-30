@@ -55,7 +55,7 @@ namespace BackendCoopSoft.Controllers
             {
                 var persona = tp.Trabajador.Persona;
 
-                var haberBasico = tp.HaberBasicoMes;
+                var haberBasico = GetValor(tp, "HABER_BASICO");
                 var bonoAnt = GetValor(tp, "BONO_ANT");
                 var bonoProd = GetValor(tp, "BONO_PROD");
                 var apCoop = GetValor(tp, "AP_COOP_334");
@@ -131,12 +131,18 @@ namespace BackendCoopSoft.Controllers
 
             var persona = tp.Trabajador.Persona;
 
-            var haberBasico = tp.HaberBasicoMes;
+            // Sueldo de contrato (mensual completo)
+            var sueldoBasicoContrato = tp.HaberBasicoMes;
+
+            // Haber básico REAL del mes (prorrateado) desde la planilla
+            var haberBasicoProrrateado = GetValor("HABER_BASICO");
+
             var bonoAnt = GetValor("BONO_ANT");
             var bonoProd = GetValor("BONO_PROD");
             var apCoop = GetValor("AP_COOP_334");
 
-            var totalGanado = haberBasico + bonoAnt + bonoProd + apCoop;
+            // OJO: total ganado debe usar el HABER BÁSICO PRORRATEADO
+            var totalGanado = haberBasicoProrrateado + bonoAnt + bonoProd + apCoop;
 
             var gestora = GetValor("GESTORA_1221");
             var rcIva = GetValor("RC_IVA_13");
@@ -165,8 +171,9 @@ namespace BackendCoopSoft.Controllers
                 FechaIngreso = tp.Trabajador.FechaIngreso,
                 DiasTrabajados = tp.DiasTrabajados,
 
-                SueldoBasico = haberBasico,
-                SbPorDiasTrabajados = haberBasico, // si luego quieres prorratear, lo cambias
+                // Aquí mostramos ambos:
+                SueldoBasico = sueldoBasicoContrato,           // sueldo del contrato
+                SbPorDiasTrabajados = haberBasicoProrrateado,  // lo realmente ganado por días trabajados
                 BonoAntiguedad = bonoAnt,
                 OtrosPagos = bonoProd,
                 OIAporteInstitucional = apCoop,
@@ -182,6 +189,7 @@ namespace BackendCoopSoft.Controllers
                 LiquidoPagable = liquido
             };
         }
+
 
         private static string LimpiarFileName(string nombre)
         {

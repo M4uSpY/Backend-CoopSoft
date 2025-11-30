@@ -317,12 +317,34 @@ namespace BackendCoopSoft.Controllers
                 }
 
                 // ========= INGRESOS =========
-                var haberBasico = tp.HaberBasicoMes;
+                // 1) Calcular HABER BÁSICO PRORRATEADO según días pagados
+
+                // días del periodo de la planilla
+                var diasPeriodo = (planilla.PeriodoHasta.Date - planilla.PeriodoDesde.Date).Days + 1;
+                // si por alguna razón viene mal, asumimos 30 días
+                if (diasPeriodo <= 0)
+                    diasPeriodo = 30;
+
+                // días pagados que calculaste en GenerarTrabajadores
+                var diasPagados = tp.DiasTrabajados;
+                // por seguridad, no exceder el periodo
+                if (diasPagados > diasPeriodo)
+                    diasPagados = diasPeriodo;
+
+                // sueldo mensual completo
+                var haberBasicoMensual = tp.HaberBasicoMes;
+
+                // HABER BÁSICO GANADO = sueldo mensual / días del periodo * días pagados
+                var haberBasico = Math.Round(
+                    (diasPeriodo > 0 ? (haberBasicoMensual / diasPeriodo * diasPagados) : 0m),
+                    2);
+
                 if (conceptos.ContainsKey("HABER_BASICO"))
                 {
                     Add("HABER_BASICO", haberBasico);
                     totalIngresos += haberBasico;
                 }
+
 
                 // BONO DE ANTIGÜEDAD = 3 x SMN x porcentaje(según años)
                 decimal bonoAnt = 0m;
@@ -346,13 +368,15 @@ namespace BackendCoopSoft.Controllers
                 // totalIngresos += bonoProdManual;
 
                 // APORTE COOP 3.34% (sobre Haber Básico)
+                // APORTE COOP 3.34% (sobre HABER BÁSICO GANADO)
                 decimal apCoop = 0m;
                 if (conceptos.ContainsKey("AP_COOP_334"))
                 {
-                    apCoop = tp.HaberBasicoMes * 0.0334m;
+                    apCoop = Math.Round(haberBasico * 0.0334m, 2);
                     Add("AP_COOP_334", apCoop);
                     totalIngresos += apCoop;
                 }
+
 
                 var totalGanado = totalIngresos;
 
@@ -511,7 +535,7 @@ namespace BackendCoopSoft.Controllers
                 {
                     var persona = tp.Trabajador.Persona;
 
-                    var haberBasico = tp.HaberBasicoMes;
+                    var haberBasico = GetValor(tp, "HABER_BASICO");
                     var bonoAnt = GetValor(tp, "BONO_ANT");
                     var bonoProd = GetValor(tp, "BONO_PROD");
                     var apCoop = GetValor(tp, "AP_COOP_334");
