@@ -224,7 +224,7 @@ public class LicenciasController : ControllerBase
         // ======================================================
         //  EVITAR CHOQUE CON VACACIONES / PERMISOS (Solicitudes) ⭐
         // ======================================================
-        var haySolicitudAprobada = await _db.Solicitudes
+        var haySolicitudAprobada = await _db.Vacaciones
             .Include(s => s.EstadoSolicitud)
             .Where(s => s.IdTrabajador == dto.IdTrabajador
                         && s.EstadoSolicitud.Categoria == "EstadoSolicitud"

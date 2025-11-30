@@ -8,11 +8,11 @@ namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class VacacionesPermisosController : ControllerBase
+    public class VacacionesController : ControllerBase
     {
         private readonly AppDbContext _db;
 
-        public VacacionesPermisosController(AppDbContext db)
+        public VacacionesController(AppDbContext db)
         {
             _db = db;
         }
@@ -21,13 +21,13 @@ namespace BackendCoopSoft.Controllers
         [HttpGet("SolicitudesCalendario")]
         public async Task<IActionResult> ObtenerSolicitudesCalendario()
         {
-            var solicitudes = await _db.Solicitudes
+            var solicitudesVacaciones = await _db.Vacaciones
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Persona)
                 .Include(s => s.EstadoSolicitud)
                 .Select(s => new SolicitudCalendarioDTO
                 {
-                    IdSolicitud = s.IdSolicitud,
+                    IdVacacion = s.IdVacacion,
                     Trabajador = s.Trabajador.Persona.PrimerNombre + " " + s.Trabajador.Persona.ApellidoPaterno,
                     // Antes estaba s.TipoSolicitud.ValorCategoria
                     // Ahora todas son vacaciones → valor fijo
@@ -38,22 +38,22 @@ namespace BackendCoopSoft.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(solicitudes);
+            return Ok(solicitudesVacaciones);
         }
 
         // ==================== LISTA PARA ADMIN =====================
         [HttpGet]
         public async Task<IActionResult> ObtenerSolicitudes()
         {
-            var solicitudes = await _db.Solicitudes
+            var solicitudesVacaciones = await _db.Vacaciones
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Persona)
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Cargo)
                 .Include(s => s.EstadoSolicitud)
-                .Select(s => new SolicitudVacPermListarDTO
+                .Select(s => new SolicitudVacListarDTO
                 {
-                    IdSolicitud = s.IdSolicitud,
+                    IdVacacion = s.IdVacacion,
                     CI = s.Trabajador.Persona.CarnetIdentidad,
                     ApellidosNombres =
                         s.Trabajador.Persona.ApellidoPaterno + " " +
@@ -69,19 +69,19 @@ namespace BackendCoopSoft.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(solicitudes);
+            return Ok(solicitudesVacaciones);
         }
 
         // ==================== APROBAR VACACIÓN =====================
         [HttpPut("{id:int}/aprobar")]
         public async Task<IActionResult> AprobarSolicitud(int id)
         {
-            var solicitud = await _db.Solicitudes
+            var solicitudesVacacion = await _db.Vacaciones
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Persona)
-                .FirstOrDefaultAsync(s => s.IdSolicitud == id);
+                .FirstOrDefaultAsync(s => s.IdVacacion == id);
 
-            if (solicitud is null)
+            if (solicitudesVacacion is null)
                 return NotFound();
 
             // Ahora TODAS las solicitudes de esta tabla son VACACIONES
@@ -89,11 +89,11 @@ namespace BackendCoopSoft.Controllers
 
             if (descuentaVacacion)
             {
-                if (solicitud.Trabajador is null)
+                if (solicitudesVacacion.Trabajador is null)
                     return StatusCode(500, "El trabajador no tiene registrada la fecha de ingreso.");
 
-                var fechaIngreso = solicitud.Trabajador.FechaIngreso;
-                var fechaRef = solicitud.FechaInicio.Date;
+                var fechaIngreso = solicitudesVacacion.Trabajador.FechaIngreso;
+                var fechaRef = solicitudesVacacion.FechaInicio.Date;
 
                 var antiguedadAnios = CalcularAntiguedadEnAnios(fechaIngreso, fechaRef);
                 var diasDerecho = ObtenerDiasVacacionPorAntiguedad(antiguedadAnios);
@@ -103,13 +103,13 @@ namespace BackendCoopSoft.Controllers
 
                 var gestion = fechaRef.Year;
                 var diasYaUsados = await CalcularDiasVacacionUsadosAsync(
-                    solicitud.IdTrabajador,
+                    solicitudesVacacion.IdTrabajador,
                     gestion,
-                    solicitud.IdSolicitud);
+                    solicitudesVacacion.IdVacacion);
 
                 var diasSolicitudActual = ContarDiasHabiles(
-                    solicitud.FechaInicio,
-                    solicitud.FechaFin);
+                    solicitudesVacacion.FechaInicio,
+                    solicitudesVacacion.FechaFin);
 
                 if (diasYaUsados + diasSolicitudActual > diasDerecho)
                 {
@@ -125,8 +125,8 @@ namespace BackendCoopSoft.Controllers
                 .Select(c => c.IdClasificador)
                 .FirstAsync();
 
-            solicitud.IdEstadoSolicitud = idAprobado;
-            solicitud.FechaAprobacion = DateTime.Today;
+            solicitudesVacacion.IdEstadoSolicitud = idAprobado;
+            solicitudesVacacion.FechaAprobacion = DateTime.Today;
 
             await _db.SaveChangesAsync();
             return NoContent();
@@ -136,10 +136,10 @@ namespace BackendCoopSoft.Controllers
         [HttpPut("{id:int}/rechazar")]
         public async Task<IActionResult> RechazarSolicitud(int id)
         {
-            var solicitud = await _db.Solicitudes
-                .FirstOrDefaultAsync(s => s.IdSolicitud == id);
+            var solicitudVacacion = await _db.Vacaciones
+                .FirstOrDefaultAsync(s => s.IdVacacion == id);
 
-            if (solicitud is null)
+            if (solicitudVacacion is null)
                 return NotFound();
 
             var idRechazado = await _db.Clasificadores
@@ -147,8 +147,8 @@ namespace BackendCoopSoft.Controllers
                 .Select(c => c.IdClasificador)
                 .FirstAsync();
 
-            solicitud.IdEstadoSolicitud = idRechazado;
-            solicitud.FechaAprobacion = DateTime.Today;
+            solicitudVacacion.IdEstadoSolicitud = idRechazado;
+            solicitudVacacion.FechaAprobacion = DateTime.Today;
 
             await _db.SaveChangesAsync();
             return NoContent();
@@ -156,7 +156,7 @@ namespace BackendCoopSoft.Controllers
 
         // ==================== CREAR SOLICITUD VACACIÓN =====================
         [HttpPost]
-        public async Task<IActionResult> CrearSolicitud([FromBody] SolicitudVacPermCrearDTO dto)
+        public async Task<IActionResult> CrearSolicitud([FromBody] SolicitudVacCrearDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -178,7 +178,7 @@ namespace BackendCoopSoft.Controllers
             // ============================
             //  1) EVITAR SOLAPAMIENTO CON OTRAS VACACIONES
             // ============================
-            var vacacionesSolapadas = await _db.Solicitudes
+            var vacacionesSolapadas = await _db.Vacaciones
                 .Include(s => s.EstadoSolicitud)
                 .Where(s =>
                     s.IdTrabajador == dto.IdTrabajador &&
@@ -233,7 +233,7 @@ namespace BackendCoopSoft.Controllers
             if (estadoPendiente is null)
                 return StatusCode(500, "No está configurado el estado 'Pendiente' en Clasificador.");
 
-            var solicitud = new Solicitud
+            var solicitudVacacion = new Vacacion
             {
                 IdTrabajador = dto.IdTrabajador,
                 IdEstadoSolicitud = estadoPendiente.IdClasificador,
@@ -245,12 +245,12 @@ namespace BackendCoopSoft.Controllers
                 FechaAprobacion = null
             };
 
-            _db.Solicitudes.Add(solicitud);
+            _db.Vacaciones.Add(solicitudVacacion);
             await _db.SaveChangesAsync();
 
             return CreatedAtAction(nameof(ObtenerSolicitudes),
-                new { id = solicitud.IdSolicitud },
-                solicitud.IdSolicitud);
+                new { id = solicitudVacacion.IdVacacion },
+                solicitudVacacion.IdVacacion);
         }
 
         // ==================== RESUMEN VACACIONES =====================
@@ -334,17 +334,17 @@ namespace BackendCoopSoft.Controllers
         // Días ya usados en el año (ahora SOLO vacaciones, porque esta tabla ya no guarda permisos)
         private async Task<int> CalcularDiasVacacionUsadosAsync(int idTrabajador, int gestion, int idSolicitudActual = 0)
         {
-            var solicitudes = await _db.Solicitudes
+            var solicitudesVacacion = await _db.Vacaciones
                 .Include(s => s.EstadoSolicitud)
                 .Where(s => s.IdTrabajador == idTrabajador
                             && s.FechaInicio.Year == gestion
-                            && s.IdSolicitud != idSolicitudActual
+                            && s.IdVacacion != idSolicitudActual
                             && s.EstadoSolicitud.ValorCategoria == "Aprobado")
                 .ToListAsync();
 
             int total = 0;
 
-            foreach (var sol in solicitudes)
+            foreach (var sol in solicitudesVacacion)
             {
                 total += ContarDiasHabiles(sol.FechaInicio, sol.FechaFin);
             }

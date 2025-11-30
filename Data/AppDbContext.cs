@@ -23,7 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<FormacionAcademica> FormacionesAcademicas => Set<FormacionAcademica>();
 
     public DbSet<Clasificador> Clasificadores => Set<Clasificador>();
-    public DbSet<Solicitud> Solicitudes => Set<Solicitud>();
+    public DbSet<Vacacion> Vacaciones => Set<Vacacion>();
 
     public DbSet<HuellaDactilar> HuellasDactilares => Set<HuellaDactilar>();
     public DbSet<Falta> Faltas => Set<Falta>();
@@ -125,9 +125,9 @@ public class AppDbContext : DbContext
             .HasForeignKey(c => c.IdTrabajador)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<Solicitud>()
+        modelBuilder.Entity<Vacacion>()
             .HasOne(s => s.Trabajador)
-            .WithMany(t => t.Solicitudes)
+            .WithMany(t => t.Vacaciones)
             .HasForeignKey(s => s.IdTrabajador)
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -194,7 +194,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(f => f.IdTipoFalta)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<Solicitud>()
+        modelBuilder.Entity<Vacacion>()
             .HasOne(s => s.EstadoSolicitud)
             .WithMany(cl => cl.EstadosSolicitud)
             .HasForeignKey(s => s.IdEstadoSolicitud)

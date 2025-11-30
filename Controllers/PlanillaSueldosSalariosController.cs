@@ -217,7 +217,7 @@ namespace BackendCoopSoft.Controllers
                 .ToListAsync();
 
             // Vacaciones aprobadas
-            var vacaciones = await _db.Solicitudes
+            var vacaciones = await _db.Vacaciones
                 .Include(s => s.EstadoSolicitud)
                 .Where(s => s.IdTrabajador == idTrabajador
                             && s.EstadoSolicitud.Categoria == "EstadoSolicitud"

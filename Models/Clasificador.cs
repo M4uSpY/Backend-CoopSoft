@@ -27,8 +27,8 @@ public class Clasificador
 
 
     // Relacion 1 Clasif -> N Estado_solicitud
-    [InverseProperty(nameof(Solicitud.EstadoSolicitud))]
-    public ICollection<Solicitud> EstadosSolicitud { get; set; } = new List<Solicitud>();
+    [InverseProperty(nameof(Vacacion.EstadoSolicitud))]
+    public ICollection<Vacacion> EstadosSolicitud { get; set; } = new List<Vacacion>();
 
     [InverseProperty(nameof(Licencia.EstadoLicencia))]
     public ICollection<Licencia> EstadosLicencia { get; set; } = new List<Licencia>();

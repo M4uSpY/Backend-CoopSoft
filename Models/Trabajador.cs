@@ -45,7 +45,7 @@ public class Trabajador
     public ICollection<Capacitacion> Capacitaciones { get; set; } = new List<Capacitacion>();
     public ICollection<FormacionAcademica> FormacionesAcademicas { get; set; } = new List<FormacionAcademica>();
     public ICollection<Falta> Faltas { get; set; } = new List<Falta>();
-    public ICollection<Solicitud> Solicitudes { get; set; } = new List<Solicitud>();
+    public ICollection<Vacacion> Vacaciones { get; set; } = new List<Vacacion>();
     public ICollection<Licencia> Licencias { get; set; } = new List<Licencia>();
 
     public ICollection<Contrato> Contratos { get; set; } = new List<Contrato>();

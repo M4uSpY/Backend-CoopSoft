@@ -65,7 +65,7 @@ namespace BackendCoopSoft.Controllers
             // =========================================================
             // 1) VACACIONES / PERMISOS APROBADOS (Solicitud)
             // =========================================================
-            var vacacionHoy = await _db.Solicitudes
+            var vacacionHoy = await _db.Vacaciones
                 .Include(s => s.EstadoSolicitud)
                 .Where(s => s.IdTrabajador == dto.IdTrabajador
                             && s.FechaInicio <= hoy

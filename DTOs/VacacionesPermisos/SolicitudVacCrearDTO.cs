@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BackendCoopSoft.DTOs.VacacionesPermisos;
 
-public class SolicitudVacPermCrearDTO
+public class SolicitudVacCrearDTO
 {
     [Required] 
     public int IdTrabajador { get; set; }

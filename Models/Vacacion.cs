@@ -4,13 +4,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BackendCoopSoft.Models;
 
-[Table("Solicitud")]
-public class Solicitud
+[Table("Vacacion")]
+public class Vacacion
 {
     [Key]
-    [Column("id_solicitud")]
+    [Column("id_vacacion")]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int IdSolicitud { get; set; }
+    public int IdVacacion { get; set; }
 
     [Required(ErrorMessage = "Es necesario un trabajador")]
     [Column("id_trabajador")]
