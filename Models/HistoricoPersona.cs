@@ -1,4 +1,4 @@
-    using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -27,9 +27,16 @@ public class HistoricoPersona
     [Column("accion", TypeName = "nvarchar(50)")]
     public string Accion { get; set; } = string.Empty;
 
-    
-    [Column("apartados_modificados", TypeName = "nvarchar(max)")]
-    public string? ApartadosModificados { get; set; }
+    [Required]
+    [Column("campo", TypeName = "nvarchar(100)")]
+    [StringLength(100)]
+    public string Campo { get; set; } = string.Empty;
+
+    [Column("valor_anterior", TypeName = "nvarchar(max)")]
+    public string? ValorAnterior { get; set; }
+
+    [Column("valor_actual", TypeName = "nvarchar(max)")]
+    public string? ValorActual { get; set; }
 
     // 🔗 Propiedad de navegación al usuario "dueño" del histórico
     [ForeignKey(nameof(IdPersona))]

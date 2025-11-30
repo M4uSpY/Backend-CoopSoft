@@ -62,7 +62,9 @@ namespace BackendCoopSoft.Controllers
                 UsuarioModificoId = idUsuarioActual.Value,
                 FechaModificacion = DateTime.Now,
                 Accion = teniaArchivoAntes ? "ACTUALIZAR" : "CREAR",
-                ApartadosModificados = "ArchivoJustificativo"
+                Campo = "ArchivoJustificativo",
+                ValorAnterior = teniaArchivoAntes ? "ConArchivo" : "SinArchivo",
+                ValorActual = "ConArchivo"
             };
 
             await _db.HistoricosFalta.AddAsync(historico);
@@ -92,11 +94,29 @@ namespace BackendCoopSoft.Controllers
         {
             var falta = await _db.Faltas.FindAsync(id);
             if (falta is null)
-            {
                 return NotFound("Falta no encontrada");
-            }
+
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual is null)
+                return Unauthorized("No se pudo identificar al usuario que modifica.");
+
+            // Registrar histórico de eliminación
+            var historico = new HistoricoFalta
+            {
+                IdFalta = falta.IdFalta,
+                UsuarioModificoId = idUsuarioActual.Value,
+                FechaModificacion = DateTime.Now,
+                Accion = "INACTIVAR",
+                Campo = "Falta",
+                ValorAnterior = "Registrada",
+                ValorActual = "Eliminada"
+            };
+
+            await _db.HistoricosFalta.AddAsync(historico);
+
             _db.Faltas.Remove(falta);
             await _db.SaveChangesAsync();
+
             return NoContent();
         }
 
@@ -104,7 +124,6 @@ namespace BackendCoopSoft.Controllers
         {
             var claimSub = User.FindFirst(JwtRegisteredClaimNames.Sub);
             var claimNameId = User.FindFirst(ClaimTypes.NameIdentifier);
-
             var claim = claimSub ?? claimNameId;
 
             if (claim is null)

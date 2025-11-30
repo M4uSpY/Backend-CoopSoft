@@ -28,15 +28,20 @@ public class HistoricoTrabajador
     [Column("accion")]
     public string Accion { get; set; } = string.Empty; // CREAR / ACTUALIZAR / INACTIVAR
 
-    [StringLength(300)]
-    [Column("apartados_modificados")]
-    public string ApartadosModificados { get; set; } = string.Empty;
+    [Required]
+    [Column("campo", TypeName = "nvarchar(100)")]
+    [StringLength(100)]
+    public string Campo { get; set; } = string.Empty;
 
-    // 🔗 Propiedad de navegación al usuario "dueño" del histórico
+    [Column("valor_anterior", TypeName = "nvarchar(max)")]
+    public string? ValorAnterior { get; set; }
+
+    [Column("valor_actual", TypeName = "nvarchar(max)")]
+    public string? ValorActual { get; set; }
+
     [ForeignKey(nameof(IdTrabajador))]
     public Trabajador Trabajador { get; set; } = null!;
 
-    // 🔗 Propiedad de navegación al usuario que hizo la modificación
     [ForeignKey(nameof(UsuarioModificoId))]
     public Usuario UsuarioModifico { get; set; } = null!;
 }

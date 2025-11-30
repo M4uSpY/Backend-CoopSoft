@@ -106,7 +106,9 @@ namespace BackendCoopSoft.Controllers
                     UsuarioModificoId = idUsuarioActual.Value,
                     FechaModificacion = DateTime.Now,
                     Accion = "CREAR",
-                    ApartadosModificados = "Todos los campos + Horarios"
+                    Campo = "Todos",
+                    ValorAnterior = null,
+                    ValorActual = "Trabajador creado con horarios"
                 };
 
                 await _db.HistoricosTrabajador.AddAsync(historico);
@@ -146,10 +148,17 @@ namespace BackendCoopSoft.Controllers
                 UsuarioModificoId = idUsuarioActual.Value,
                 FechaModificacion = DateTime.Now,
                 Accion = "INACTIVAR",
-                ApartadosModificados = "EstadoTrabajador"
+                Campo = "Trabajador",
+                ValorAnterior = "Registrado",
+                ValorActual = "Eliminado"
             };
 
             await _db.HistoricosTrabajador.AddAsync(historico);
+
+            if (trabajador.Horarios.Any())
+                _db.Horarios.RemoveRange(trabajador.Horarios);
+
+            _db.Trabajadores.Remove(trabajador);
 
             await _db.SaveChangesAsync();
 
@@ -197,13 +206,11 @@ namespace BackendCoopSoft.Controllers
             if (diasDuplicados.Any())
                 return BadRequest($"No se puede tener horarios duplicados para los días: {string.Join(", ", diasDuplicados)}");
 
-            // Actualizar campos del trabajador
             trabajador.IdPersona = trabajadorActualizarDTO.IdPersona;
             trabajador.HaberBasico = trabajadorActualizarDTO.HaberBasico;
             trabajador.FechaIngreso = trabajadorActualizarDTO.FechaIngreso;
             trabajador.IdCargo = trabajadorActualizarDTO.IdCargo;
 
-            // Eliminar horarios existentes
             if (trabajador.Horarios.Any())
                 _db.Horarios.RemoveRange(trabajador.Horarios);
 
@@ -217,28 +224,80 @@ namespace BackendCoopSoft.Controllers
                 await _db.Horarios.AddAsync(horario);
             }
 
-            // Detectar cambios para el histórico
-            List<string> cambios = new();
+            var historicos = new List<HistoricoTrabajador>();
 
-            if (antes.IdPersona != trabajador.IdPersona) cambios.Add("IdPersona");
-            if (antes.HaberBasico != trabajador.HaberBasico) cambios.Add("HaberBasico");
-            if (antes.FechaIngreso != trabajador.FechaIngreso) cambios.Add("FechaIngreso");
-            if (antes.IdCargo != trabajador.IdCargo) cambios.Add("IdCargo");
-
-            cambios.Add("Horarios");
-
-            if (cambios.Count > 0)
-            {
-                var historico = new HistoricoTrabajador
+            if (antes.IdPersona != trabajador.IdPersona)
+                historicos.Add(new HistoricoTrabajador
                 {
                     IdTrabajador = trabajador.IdTrabajador,
                     UsuarioModificoId = idUsuarioActual.Value,
                     FechaModificacion = DateTime.Now,
                     Accion = "ACTUALIZAR",
-                    ApartadosModificados = string.Join(", ", cambios)
-                };
+                    Campo = "IdPersona",
+                    ValorAnterior = antes.IdPersona.ToString(),
+                    ValorActual = trabajador.IdPersona.ToString()
+                });
 
-                await _db.HistoricosTrabajador.AddAsync(historico);
+            if (antes.HaberBasico != trabajador.HaberBasico)
+                historicos.Add(new HistoricoTrabajador
+                {
+                    IdTrabajador = trabajador.IdTrabajador,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "HaberBasico",
+                    ValorAnterior = antes.HaberBasico.ToString("0.00"),
+                    ValorActual = trabajador.HaberBasico.ToString("0.00")
+                });
+
+            if (antes.FechaIngreso != trabajador.FechaIngreso)
+                historicos.Add(new HistoricoTrabajador
+                {
+                    IdTrabajador = trabajador.IdTrabajador,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "FechaIngreso",
+                    ValorAnterior = antes.FechaIngreso.ToShortDateString(),
+                    ValorActual = trabajador.FechaIngreso.ToShortDateString()
+                });
+
+            if (antes.IdCargo != trabajador.IdCargo)
+                historicos.Add(new HistoricoTrabajador
+                {
+                    IdTrabajador = trabajador.IdTrabajador,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "IdCargo",
+                    ValorAnterior = antes.IdCargo.ToString(),
+                    ValorActual = trabajador.IdCargo.ToString()
+                });
+
+            // Registro resumen de cambio de horarios
+            var cantAntes = antes.Horarios.Count;
+            var cantDespues = horariosNuevos.Count;
+            if (cantAntes != cantDespues ||
+                !antes.Horarios.SequenceEqual(
+                    horariosNuevos
+                        .Select(h => new { h.DiaSemana, h.HoraEntrada, h.HoraSalida })
+                        .OrderBy(h => h.DiaSemana)))
+            {
+                historicos.Add(new HistoricoTrabajador
+                {
+                    IdTrabajador = trabajador.IdTrabajador,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "Horarios",
+                    ValorAnterior = $"{cantAntes} horarios",
+                    ValorActual = $"{cantDespues} horarios"
+                });
+            }
+
+            if (historicos.Any())
+            {
+                await _db.HistoricosTrabajador.AddRangeAsync(historicos);
             }
 
 
@@ -248,8 +307,6 @@ namespace BackendCoopSoft.Controllers
             var trabajadorDTO = _mapper.Map<TrabajadoresListarDTO>(trabajador);
             return Ok(trabajadorDTO);
         }
-
-        // ================== HELPER: IdUsuarioActual ==================
 
         private int? ObtenerIdUsuarioActual()
         {

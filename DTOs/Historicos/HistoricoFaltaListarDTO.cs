@@ -9,5 +9,9 @@ public class HistoricoFaltaListarDTO
     public string UsuarioModifico { get; set; } = string.Empty;
     public DateTime FechaModificacion { get; set; }
     public string Accion { get; set; } = string.Empty;
-    public string ApartadosModificados { get; set; } = string.Empty;
+
+    // Nuevo modelo
+    public string Campo { get; set; } = string.Empty;
+    public string? ValorAnterior { get; set; }
+    public string? ValorActual { get; set; }
 }

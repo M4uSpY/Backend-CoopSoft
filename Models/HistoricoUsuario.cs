@@ -22,16 +22,22 @@ public class HistoricoUsuario
 
     [Column("fecha_modificacion", TypeName = "datetime")]
     public DateTime FechaModificacion { get; set; }
-    
+
     [Required]
     [Column("accion", TypeName = "varchar(20)")]
     [StringLength(20)]
     public string Accion { get; set; } = string.Empty;
 
-    [Column("apartados_modificados", TypeName = "varchar(200)")]
-    [StringLength(200)]
-    public string ApartadosModificados { get; set; } = string.Empty;
+    [Required]
+    [Column("campo", TypeName = "varchar(100)")]
+    [StringLength(100)]
+    public string Campo { get; set; } = string.Empty;  // "NombreUsuario", "EstadoUsuario", etc.
 
+    [Column("valor_anterior", TypeName = "varchar(max)")]
+    public string? ValorAnterior { get; set; }
+
+    [Column("valor_actual", TypeName = "varchar(max)")]
+    public string? ValorActual { get; set; }
 
     // 🔗 Propiedad de navegación al usuario "dueño" del histórico
     [ForeignKey(nameof(IdUsuario))]

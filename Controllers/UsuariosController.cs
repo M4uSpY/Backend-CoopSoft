@@ -59,7 +59,7 @@ namespace BackendCoopSoft.Controllers
             usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDTO.Password);
 
             await _db.Usuarios.AddAsync(usuario);
-            await _db.SaveChangesAsync();
+
 
 
             // Después de tener IdUsuario
@@ -72,12 +72,15 @@ namespace BackendCoopSoft.Controllers
                     UsuarioModificoId = idUsuarioActual.Value,
                     FechaModificacion = DateTime.Now,
                     Accion = "CREAR",
-                    ApartadosModificados = "Todos los campos"
+                    Campo = "Todos",
+                    ValorAnterior = null,
+                    ValorActual = "Usuario creado"
                 };
 
                 await _db.HistoricosUsuario.AddAsync(historico);
-                await _db.SaveChangesAsync();
             }
+
+            await _db.SaveChangesAsync();
 
             var usuarioCreado = _mapper.Map<UsuarioListarDTO>(usuario);
             return CreatedAtAction(nameof(GetById), new { id = usuario.IdUsuario }, usuarioCreado);
@@ -109,40 +112,72 @@ namespace BackendCoopSoft.Controllers
 
             _mapper.Map(dto, usuario);
 
-            // Si vino una nueva contraseña entonces se procede al hasheo
             if (!string.IsNullOrWhiteSpace(dto.PasswordNueva))
             {
                 usuario.Password = BCrypt.Net.BCrypt.HashPassword(dto.PasswordNueva);
             }
 
-            // Detectar cambios
-            List<string> cambios = new();
+            var historicos = new List<HistoricoUsuario>();
 
             if (antiguoNombreUsuario != usuario.NombreUsuario)
-                cambios.Add("NombreUsuario");
-
-            if (antiguoEstado != usuario.EstadoUsuario)
-                cambios.Add("EstadoUsuario");
-
-            if (!string.IsNullOrWhiteSpace(dto.PasswordNueva))
-                cambios.Add("Password");
-
-            if (antiguoRol != usuario.IdRol)
-                cambios.Add("Rol");
-
-            // Registrar histórico SOLO SI CAMBIÓ ALGO
-            if (cambios.Count > 0)
             {
-                var historico = new HistoricoUsuario
+                historicos.Add(new HistoricoUsuario
                 {
                     IdUsuario = usuario.IdUsuario,
                     UsuarioModificoId = idUsuarioActual.Value,
                     FechaModificacion = DateTime.Now,
                     Accion = "ACTUALIZAR",
-                    ApartadosModificados = string.Join(", ", cambios)
-                };
+                    Campo = "NombreUsuario",
+                    ValorAnterior = antiguoNombreUsuario,
+                    ValorActual = usuario.NombreUsuario
+                });
+            }
 
-                await _db.HistoricosUsuario.AddAsync(historico);
+            if (antiguoEstado != usuario.EstadoUsuario)
+            {
+                historicos.Add(new HistoricoUsuario
+                {
+                    IdUsuario = usuario.IdUsuario,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "EstadoUsuario",
+                    ValorAnterior = antiguoEstado.ToString(),
+                    ValorActual = usuario.EstadoUsuario.ToString()
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.PasswordNueva))
+            {
+                historicos.Add(new HistoricoUsuario
+                {
+                    IdUsuario = usuario.IdUsuario,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "Password",
+                    ValorAnterior = "********",
+                    ValorActual = "********"
+                });
+            }
+
+            if (antiguoRol != usuario.IdRol)
+            {
+                historicos.Add(new HistoricoUsuario
+                {
+                    IdUsuario = usuario.IdUsuario,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "Rol",
+                    ValorAnterior = antiguoRol.ToString(),
+                    ValorActual = usuario.IdRol.ToString()
+                });
+            }
+
+            if (historicos.Any())
+            {
+                await _db.HistoricosUsuario.AddRangeAsync(historicos);
             }
 
 
@@ -171,6 +206,8 @@ namespace BackendCoopSoft.Controllers
                 return Unauthorized("No se pudo identificar al usuario que quiere modificar.");
             }
 
+            var estadoAnterior = usuario.EstadoUsuario;
+
             usuario.EstadoUsuario = false;
 
             var historico = new HistoricoUsuario
@@ -179,7 +216,9 @@ namespace BackendCoopSoft.Controllers
                 UsuarioModificoId = idUsuarioActual.Value,
                 FechaModificacion = DateTime.Now,
                 Accion = "INACTIVAR",
-                ApartadosModificados = "EstadoUsuario"
+                Campo = "EstadoUsuario",
+                ValorAnterior = estadoAnterior.ToString(),
+                ValorActual = usuario.EstadoUsuario.ToString()
             };
 
             await _db.HistoricosUsuario.AddAsync(historico);

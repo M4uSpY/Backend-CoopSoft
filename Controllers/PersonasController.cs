@@ -86,7 +86,9 @@ namespace BackendCoopSoft.Controllers
                     UsuarioModificoId = idUsuarioActual.Value,
                     FechaModificacion = DateTime.Now,
                     Accion = "CREAR",
-                    ApartadosModificados = "Todos los campos"
+                    Campo = "Todos",
+                    ValorAnterior = null,
+                    ValorActual = "Persona creada"
                 };
 
                 await _db.HistoricosPersona.AddAsync(historico);
@@ -152,31 +154,108 @@ namespace BackendCoopSoft.Controllers
                 }
             }
 
-            List<string> cambios = new();
-            if (antes.PrimerNombre != persona.PrimerNombre) cambios.Add("PrimerNombre");
-            if (antes.SegundoNombre != persona.SegundoNombre) cambios.Add("SegundoNombre");
-            if (antes.ApellidoPaterno != persona.ApellidoPaterno) cambios.Add("ApellidoPaterno");
-            if (antes.ApellidoMaterno != persona.ApellidoMaterno) cambios.Add("ApellidoMaterno");
-            if (antes.CarnetIdentidad != persona.CarnetIdentidad) cambios.Add("CarnetIdentidad");
-            if (antes.Direccion != persona.Direccion) cambios.Add("Direccion");
-            if (antes.Telefono != persona.Telefono) cambios.Add("Telefono");
-            if (antes.Email != persona.Email) cambios.Add("Email");
+            var historicos = new List<HistoricoPersona>();
 
-            // Registrar histórico si hubo cambios
-            if (cambios.Count > 0)
-            {
-                var historico = new HistoricoPersona
+            if (antes.PrimerNombre != persona.PrimerNombre)
+                historicos.Add(new HistoricoPersona
                 {
                     IdPersona = persona.IdPersona,
                     UsuarioModificoId = idUsuarioActual.Value,
                     FechaModificacion = DateTime.Now,
                     Accion = "ACTUALIZAR",
-                    ApartadosModificados = string.Join(", ", cambios)
-                };
+                    Campo = "PrimerNombre",
+                    ValorAnterior = antes.PrimerNombre,
+                    ValorActual = persona.PrimerNombre
+                });
 
-                await _db.HistoricosPersona.AddAsync(historico);
+            if (antes.SegundoNombre != persona.SegundoNombre)
+                historicos.Add(new HistoricoPersona
+                {
+                    IdPersona = persona.IdPersona,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "SegundoNombre",
+                    ValorAnterior = antes.SegundoNombre,
+                    ValorActual = persona.SegundoNombre
+                });
+
+            if (antes.ApellidoPaterno != persona.ApellidoPaterno)
+                historicos.Add(new HistoricoPersona
+                {
+                    IdPersona = persona.IdPersona,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "ApellidoPaterno",
+                    ValorAnterior = antes.ApellidoPaterno,
+                    ValorActual = persona.ApellidoPaterno
+                });
+
+            if (antes.ApellidoMaterno != persona.ApellidoMaterno)
+                historicos.Add(new HistoricoPersona
+                {
+                    IdPersona = persona.IdPersona,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "ApellidoMaterno",
+                    ValorAnterior = antes.ApellidoMaterno,
+                    ValorActual = persona.ApellidoMaterno
+                });
+
+            if (antes.CarnetIdentidad != persona.CarnetIdentidad)
+                historicos.Add(new HistoricoPersona
+                {
+                    IdPersona = persona.IdPersona,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "CarnetIdentidad",
+                    ValorAnterior = antes.CarnetIdentidad,
+                    ValorActual = persona.CarnetIdentidad
+                });
+
+            if (antes.Direccion != persona.Direccion)
+                historicos.Add(new HistoricoPersona
+                {
+                    IdPersona = persona.IdPersona,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "Direccion",
+                    ValorAnterior = antes.Direccion,
+                    ValorActual = persona.Direccion
+                });
+
+            if (antes.Telefono != persona.Telefono)
+                historicos.Add(new HistoricoPersona
+                {
+                    IdPersona = persona.IdPersona,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "Telefono",
+                    ValorAnterior = antes.Telefono,
+                    ValorActual = persona.Telefono
+                });
+
+            if (antes.Email != persona.Email)
+                historicos.Add(new HistoricoPersona
+                {
+                    IdPersona = persona.IdPersona,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "Email",
+                    ValorAnterior = antes.Email,
+                    ValorActual = persona.Email
+                });
+
+            if (historicos.Any())
+            {
+                await _db.HistoricosPersona.AddRangeAsync(historicos);
             }
-
             await _db.SaveChangesAsync();
             return NoContent();
         }
@@ -198,19 +277,23 @@ namespace BackendCoopSoft.Controllers
                 return Unauthorized("No se pudo identificar al usuario que quiere modificar.");
             }
 
-            _db.Personas.Remove(persona);
-
+            // Registrar histórico ANTES de borrar
             var historico = new HistoricoPersona
             {
                 IdPersona = persona.IdPersona,
                 UsuarioModificoId = idUsuarioActual.Value,
                 FechaModificacion = DateTime.Now,
                 Accion = "INACTIVAR",
-                ApartadosModificados = "EstadoUsuario"
+                Campo = "Persona",
+                ValorAnterior = "Registrada",
+                ValorActual = "Eliminada"
             };
 
+            await _db.HistoricosPersona.AddAsync(historico);
 
+            _db.Personas.Remove(persona);
             await _db.SaveChangesAsync();
+
             return NoContent();
         }
         [HttpGet("{id:int}/huella")]
@@ -229,12 +312,8 @@ namespace BackendCoopSoft.Controllers
 
         private int? ObtenerIdUsuarioActual()
         {
-            // 1) Intentar encontrar el claim "sub"
             var claimSub = User.FindFirst(JwtRegisteredClaimNames.Sub);
-
-            // 2) Si no está, intentar con NameIdentifier (mapeo por defecto)
             var claimNameId = User.FindFirst(ClaimTypes.NameIdentifier); // verificar using
-
             var claim = claimSub ?? claimNameId;
 
             if (claim is null)
