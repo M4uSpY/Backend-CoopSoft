@@ -92,60 +92,60 @@ namespace BackendCoopSoft.Controllers
 
         // ==================== LISTA PARA ADMIN/CONSEJO =====================
         [HttpGet]
-public async Task<IActionResult> ObtenerSolicitudes()
-{
-    var rolActual = GetRolUsuarioActual();
-    if (string.IsNullOrWhiteSpace(rolActual))
-        return Forbid("No se pudo determinar el rol del usuario actual.");
-
-    var rol = rolActual.Trim();
-
-    var query = _db.Vacaciones
-        .Include(s => s.Trabajador)
-            .ThenInclude(t => t.Persona)
-        .Include(s => s.Trabajador)
-            .ThenInclude(t => t.Cargo)
-        .Include(s => s.EstadoSolicitud)
-        .AsQueryable();
-
-    // Consejo → solo "Administrador General"
-    if (rol.Equals("Consejo", StringComparison.OrdinalIgnoreCase) ||
-        rol.Equals("Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
-        rol.Equals("Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
-    {
-        query = query.Where(s => s.Trabajador.Cargo.NombreCargo == CARGO_ADMIN);
-    }
-    // Administrador → solo casuales (no "Administrador General")
-    else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-             rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-    {
-        query = query.Where(s => s.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
-    }
-    else
-    {
-        return Forbid("No tiene permisos para ver la lista de solicitudes de vacación.");
-    }
-
-    var solicitudesVacaciones = await query
-        .Select(s => new SolicitudVacListarDTO
+        public async Task<IActionResult> ObtenerSolicitudes()
         {
-            IdVacacion = s.IdVacacion,
-            CI = s.Trabajador.Persona.CarnetIdentidad,
-            ApellidosNombres =
-                s.Trabajador.Persona.ApellidoPaterno + " " +
-                s.Trabajador.Persona.ApellidoMaterno + " " +
-                s.Trabajador.Persona.PrimerNombre,
-            Cargo = s.Trabajador.Cargo.NombreCargo,
-            Tipo = "Vacación",
-            Motivo = s.Motivo,
-            FechaInicio = s.FechaInicio,
-            FechaFin = s.FechaFin,
-            Estado = s.EstadoSolicitud.ValorCategoria
-        })
-        .ToListAsync();
+            var rolActual = GetRolUsuarioActual();
+            if (string.IsNullOrWhiteSpace(rolActual))
+                return Forbid("No se pudo determinar el rol del usuario actual.");
 
-    return Ok(solicitudesVacaciones);
-}
+            var rol = rolActual.Trim();
+
+            var query = _db.Vacaciones
+                .Include(s => s.Trabajador)
+                    .ThenInclude(t => t.Persona)
+                .Include(s => s.Trabajador)
+                    .ThenInclude(t => t.Cargo)
+                .Include(s => s.EstadoSolicitud)
+                .AsQueryable();
+
+            // Consejo → solo "Administrador General"
+            if (rol.Equals("Consejo", StringComparison.OrdinalIgnoreCase) ||
+                rol.Equals("Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
+                rol.Equals("Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(s => s.Trabajador.Cargo.NombreCargo == CARGO_ADMIN);
+            }
+            // Administrador → solo casuales (no "Administrador General")
+            else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+                     rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(s => s.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
+            }
+            else
+            {
+                return Forbid("No tiene permisos para ver la lista de solicitudes de vacación.");
+            }
+
+            var solicitudesVacaciones = await query
+                .Select(s => new SolicitudVacListarDTO
+                {
+                    IdVacacion = s.IdVacacion,
+                    CI = s.Trabajador.Persona.CarnetIdentidad,
+                    ApellidosNombres =
+                        s.Trabajador.Persona.ApellidoPaterno + " " +
+                        s.Trabajador.Persona.ApellidoMaterno + " " +
+                        s.Trabajador.Persona.PrimerNombre,
+                    Cargo = s.Trabajador.Cargo.NombreCargo,
+                    Tipo = "Vacación",
+                    Motivo = s.Motivo,
+                    FechaInicio = s.FechaInicio,
+                    FechaFin = s.FechaFin,
+                    Estado = s.EstadoSolicitud.ValorCategoria
+                })
+                .ToListAsync();
+
+            return Ok(solicitudesVacaciones);
+        }
 
 
         // ==================== APROBAR VACACIÓN =====================
@@ -386,6 +386,41 @@ public async Task<IActionResult> ObtenerSolicitudes()
 
             return Ok(dto);
         }
+
+        // ==================== ELIMINAR VACACIÓN =====================
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> EliminarSolicitud(int id)
+        {
+            // 1) Rol del usuario actual
+            var rolActual = GetRolUsuarioActual();
+            if (string.IsNullOrWhiteSpace(rolActual))
+                return Forbid("No se pudo determinar el rol del usuario actual.");
+
+            var solicitudVacacion = await _db.Vacaciones
+                .Include(s => s.Trabajador)
+                    .ThenInclude(t => t.Cargo)
+                .Include(s => s.EstadoSolicitud)
+                .FirstOrDefaultAsync(s => s.IdVacacion == id);
+
+            if (solicitudVacacion is null)
+                return NotFound("Solicitud de vacación no encontrada.");
+
+            var cargoTrabajador = solicitudVacacion.Trabajador?.Cargo?.NombreCargo;
+
+            // 2) Validar permiso según rol y cargo
+            if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
+                return Forbid("No tiene permiso para eliminar la vacación de este trabajador.");
+
+            // 3) Solo permitir eliminar si está en estado 'Pendiente'
+            if (!string.Equals(solicitudVacacion.EstadoSolicitud?.ValorCategoria, "Pendiente", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Solo se pueden eliminar solicitudes de vacación en estado 'Pendiente'.");
+
+            _db.Vacaciones.Remove(solicitudVacacion);
+            await _db.SaveChangesAsync();
+
+            return NoContent();
+        }
+
 
         // ==================== HELPERS =====================
 

@@ -66,62 +66,62 @@ public class LicenciasController : ControllerBase
     }
 
     [HttpGet]
-public async Task<IActionResult> ObtenerLicencias()
-{
-    var rolActual = GetRolUsuarioActual();
-    if (string.IsNullOrWhiteSpace(rolActual))
-        return Forbid("No se pudo determinar el rol del usuario actual.");
-
-    var rol = rolActual.Trim();
-
-    var query = _db.Licencias
-        .Include(l => l.Trabajador).ThenInclude(t => t.Persona)
-        .Include(l => l.Trabajador).ThenInclude(t => t.Cargo)
-        .Include(l => l.TipoLicencia)
-        .Include(l => l.EstadoLicencia)
-        .AsQueryable();
-
-    // Consejo -> solo "Administrador General"
-    if (rol.Equals("Consejo", StringComparison.OrdinalIgnoreCase) ||
-        rol.Equals("Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
-        rol.Equals("Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+    public async Task<IActionResult> ObtenerLicencias()
     {
-        query = query.Where(l => l.Trabajador.Cargo.NombreCargo == CARGO_ADMIN);
+        var rolActual = GetRolUsuarioActual();
+        if (string.IsNullOrWhiteSpace(rolActual))
+            return Forbid("No se pudo determinar el rol del usuario actual.");
+
+        var rol = rolActual.Trim();
+
+        var query = _db.Licencias
+            .Include(l => l.Trabajador).ThenInclude(t => t.Persona)
+            .Include(l => l.Trabajador).ThenInclude(t => t.Cargo)
+            .Include(l => l.TipoLicencia)
+            .Include(l => l.EstadoLicencia)
+            .AsQueryable();
+
+        // Consejo -> solo "Administrador General"
+        if (rol.Equals("Consejo", StringComparison.OrdinalIgnoreCase) ||
+            rol.Equals("Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
+            rol.Equals("Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(l => l.Trabajador.Cargo.NombreCargo == CARGO_ADMIN);
+        }
+        // Administrador -> todos MENOS "Administrador General"
+        else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+                 rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(l => l.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
+        }
+        else
+        {
+            return Forbid("No tiene permisos para ver la lista de licencias.");
+        }
+
+        var licencias = await query.ToListAsync();
+
+        var dto = licencias.Select(l => new LicenciaListarDTO
+        {
+            IdLicencia = l.IdLicencia,
+            IdTrabajador = l.IdTrabajador,
+            CI = l.Trabajador.Persona.CarnetIdentidad,
+            ApellidosNombres = $"{l.Trabajador.Persona.ApellidoPaterno} {l.Trabajador.Persona.ApellidoMaterno} {l.Trabajador.Persona.PrimerNombre}",
+            Cargo = l.Trabajador.Cargo.NombreCargo,
+            TipoLicencia = l.TipoLicencia.ValorCategoria,
+            FechaInicio = l.FechaInicio,
+            FechaFin = l.FechaFin,
+            HoraInicio = l.HoraInicio,
+            HoraFin = l.HoraFin,
+            CantidadJornadas = l.CantidadJornadas,
+            Estado = l.EstadoLicencia.ValorCategoria,
+            Motivo = l.Motivo,
+            Observacion = l.Observacion,
+            TieneArchivoJustificativo = l.ArchivoJustificativo != null && l.ArchivoJustificativo.Length > 0
+        }).ToList();
+
+        return Ok(dto);
     }
-    // Administrador -> todos MENOS "Administrador General"
-    else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-             rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-    {
-        query = query.Where(l => l.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
-    }
-    else
-    {
-        return Forbid("No tiene permisos para ver la lista de licencias.");
-    }
-
-    var licencias = await query.ToListAsync();
-
-    var dto = licencias.Select(l => new LicenciaListarDTO
-    {
-        IdLicencia = l.IdLicencia,
-        IdTrabajador = l.IdTrabajador,
-        CI = l.Trabajador.Persona.CarnetIdentidad,
-        ApellidosNombres = $"{l.Trabajador.Persona.ApellidoPaterno} {l.Trabajador.Persona.ApellidoMaterno} {l.Trabajador.Persona.PrimerNombre}",
-        Cargo = l.Trabajador.Cargo.NombreCargo,
-        TipoLicencia = l.TipoLicencia.ValorCategoria,
-        FechaInicio = l.FechaInicio,
-        FechaFin = l.FechaFin,
-        HoraInicio = l.HoraInicio,
-        HoraFin = l.HoraFin,
-        CantidadJornadas = l.CantidadJornadas,
-        Estado = l.EstadoLicencia.ValorCategoria,
-        Motivo = l.Motivo,
-        Observacion = l.Observacion,
-        TieneArchivoJustificativo = l.ArchivoJustificativo != null && l.ArchivoJustificativo.Length > 0
-    }).ToList();
-
-    return Ok(dto);
-}
 
 
     [HttpGet("trabajador/{idTrabajador:int}")]
@@ -210,13 +210,134 @@ public async Task<IActionResult> ObtenerLicencias()
         // ======================================================
         switch (nombreTipo)
         {
+            // --------------------------------------------------
+            // MATERNIDAD: 45 días hábiles exactos
+            // --------------------------------------------------
+            case "Maternidad":
+                {
+                    var diasHabiles = ContarDiasHabiles(fechaInicio, fechaFin);
+                    if (diasHabiles != 45)
+                    {
+                        return BadRequest(
+                            $"La licencia por maternidad debe ser de exactamente 45 días hábiles. " +
+                            $"Actualmente el rango seleccionado tiene {diasHabiles} día(s) hábil(es).");
+                    }
+                }
+                break;
+
+            // --------------------------------------------------
+            // PATERNIDAD: 3 días corridos exactos
+            // --------------------------------------------------
+            case "Paternidad":
+                {
+                    var dias = (fechaFin - fechaInicio).TotalDays + 1;
+                    if (dias != 3)
+                        return BadRequest("La licencia por paternidad debe ser de exactamente 3 días consecutivos.");
+                }
+                break;
+
+            // --------------------------------------------------
+            // MATRIMONIO: 3 días corridos exactos
+            // --------------------------------------------------
+            case "Matrimonio":
+                {
+                    var dias = (fechaFin - fechaInicio).TotalDays + 1;
+                    if (dias != 3)
+                        return BadRequest("La licencia por matrimonio debe ser de exactamente 3 días consecutivos.");
+                }
+                break;
+
+            // --------------------------------------------------
+            // LUTO / DUELO: 3 días corridos exactos
+            // --------------------------------------------------
+            case "Luto / Duelo":
+                {
+                    var dias = (fechaFin - fechaInicio).TotalDays + 1;
+                    if (dias != 3)
+                        return BadRequest("La licencia por luto o duelo debe ser de exactamente 3 días consecutivos.");
+                }
+                break;
+
+            // --------------------------------------------------
+            // ESTADO CRÍTICO DE SALUD:
+            //   (supuesto) mínimo 1 día hábil y máximo 7 hábiles
+            //   → ajusta los límites si tu reglamento dice otra cosa
+            // --------------------------------------------------
+            case "Estado crítico de salud":
+                {
+                    var diasHabiles = ContarDiasHabiles(fechaInicio, fechaFin);
+                    if (diasHabiles <= 0)
+                        return BadRequest("La licencia por estado crítico de salud debe tener al menos 1 día hábil.");
+
+                    if (diasHabiles > 7) // <-- ajusta este 7 si tu normativa dice otro máximo
+                        return BadRequest(
+                            $"La licencia por estado crítico de salud no puede exceder los 7 días hábiles. " +
+                            $"Actualmente tiene {diasHabiles} día(s) hábil(es).");
+                }
+                break;
+
+            // --------------------------------------------------
+            // CUMPLEAÑOS:
+            //   - debe ser SOLO el día del cumpleaños
+            //   - solo media jornada (≤ 50% de la jornada del día)
+            //   - solo una vez por año
+            // --------------------------------------------------
+            case "Cumpleaños":
+                {
+                    // 1) Un solo día
+                    if (fechaInicio != fechaFin)
+                        return BadRequest("La licencia por cumpleaños debe solicitarse para un solo día.");
+
+                    // 2) Validar que ese día sea el cumpleaños del trabajador
+                    var fechaNac = trabajador.Persona.FechaNacimiento.Date;
+                    var cumpleEsteAnio = new DateTime(fechaInicio.Year, fechaNac.Month, fechaNac.Day);
+
+                    if (fechaInicio.Date != cumpleEsteAnio.Date)
+                        return BadRequest("La licencia por cumpleaños solo puede solicitarse para el día del cumpleaños del trabajador.");
+
+                    // 3) Verificar que no haya usado ya la licencia de cumpleaños este año
+                    var yaUsoCumpleanio = await _db.Licencias
+                        .Include(l => l.EstadoLicencia)
+                        .Where(l =>
+                            l.IdTrabajador == dto.IdTrabajador &&
+                            l.IdTipoLicencia == tipoLicencia.IdClasificador &&
+                            l.FechaInicio.Year == fechaInicio.Year &&
+                            l.EstadoLicencia.ValorCategoria != "Rechazado")
+                        .AnyAsync();
+
+                    if (yaUsoCumpleanio)
+                        return BadRequest("El trabajador ya utilizó su licencia por cumpleaños en esta gestión.");
+
+                    // 4) Validar que el rango de horas no exceda media jornada
+                    var horarioDia = ObtenerHorarioDia(horarios, fechaInicio);
+                    if (horarioDia is null)
+                        return BadRequest("El trabajador no tiene horario asignado para el día de su cumpleaños.");
+
+                    var horasJornada = (horarioDia.HoraSalida - horarioDia.HoraEntrada).TotalHours;
+                    var horasLicencia = (horaFin - horaInicio).TotalHours;
+
+                    if (horasLicencia <= 0)
+                        return BadRequest("La licencia por cumpleaños debe tener una duración mayor a cero.");
+
+                    if (horasLicencia > (horasJornada / 2.0) + 0.01) // media jornada
+                    {
+                        return BadRequest(
+                            $"La licencia por cumpleaños no puede exceder la media jornada laboral. " +
+                            $"Jornada del día: {horasJornada:0.##} h, máximo permitido: {(horasJornada / 2.0):0.##} h.");
+                    }
+                }
+                break;
+
+            // --------------------------------------------------
+            // PERMISO TEMPORAL: ya tenías reglas (un día + 3h)
+            // --------------------------------------------------
             case "Permiso temporal":
                 {
-                    // ⭐ Debe ser un solo día
+                    // Debe ser un solo día
                     if (fechaInicio != fechaFin)
                         return BadRequest("El permiso temporal debe solicitarse para un solo día.");
 
-                    // ⭐ Máximo 3 horas por solicitud
+                    // Máximo 3 horas por solicitud
                     var duracionHoras = (horaFin - horaInicio).TotalHours;
                     if (duracionHoras <= 0)
                         return BadRequest("La duración del permiso debe ser mayor a cero.");
@@ -225,37 +346,36 @@ public async Task<IActionResult> ObtenerLicencias()
                 }
                 break;
 
-            case "Paternidad":
+            // --------------------------------------------------
+            // EXÁMENES MÉDICOS: 1 día hábil
+            // --------------------------------------------------
+            case "Examen Papanicolau / Mamografía":
+            case "Examen Próstata":
+            case "Examen Colon":
                 {
-                    // Ejemplo: 3 días corridos
-                    var dias = (fechaFin - fechaInicio).TotalDays + 1;
-                    if (dias != 3)
-                        return BadRequest("La licencia por paternidad debe ser de exactamente 3 días consecutivos.");
+                    var diasHabiles = ContarDiasHabiles(fechaInicio, fechaFin);
+                    if (diasHabiles != 1)
+                    {
+                        return BadRequest(
+                            $"La licencia por examen médico debe ser de exactamente 1 día hábil. " +
+                            $"Actualmente el rango seleccionado tiene {diasHabiles} día(s) hábil(es).");
+                    }
+
+                    // (Opcional) Solo una vez por año:
+                    var yaUsoExamen = await _db.Licencias
+                        .Include(l => l.EstadoLicencia)
+                        .Where(l =>
+                            l.IdTrabajador == dto.IdTrabajador &&
+                            l.IdTipoLicencia == tipoLicencia.IdClasificador &&
+                            l.FechaInicio.Year == fechaInicio.Year &&
+                            l.EstadoLicencia.ValorCategoria != "Rechazado")
+                        .AnyAsync();
+
+                    if (yaUsoExamen)
+                        return BadRequest("El trabajador ya tiene registrada una licencia de este tipo de examen en la gestión actual.");
                 }
                 break;
 
-            case "Luto / Duelo":
-                {
-                    // Aquí puedes aplicar la cantidad de días según tu normativa
-                    // (Dejo la lógica general, puedes ajustar los días exactos)
-                    var dias = (fechaFin - fechaInicio).TotalDays + 1;
-                    if (dias <= 0)
-                        return BadRequest("La licencia por luto/deudo debe tener al menos un día.");
-                }
-                break;
-
-            case "Matrimonio":
-                {
-                    // Igual que arriba, puedes forzar X días si lo necesitas
-                    var dias = (fechaFin - fechaInicio).TotalDays + 1;
-                    if (dias <= 0)
-                        return BadRequest("La licencia por matrimonio debe tener al menos un día.");
-                }
-                break;
-
-            // 🔹 Otras licencias especiales que tú tenías
-            //     (cumpleaños, capacitación, etc.)
-            //     las puedes volver a añadir aquí encima del default
             default:
                 break;
         }
@@ -488,6 +608,37 @@ public async Task<IActionResult> ObtenerLicencias()
         return NoContent();
     }
 
+    // ==================== ELIMINAR LICENCIA =====================
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> EliminarLicencia(int id)
+    {
+        var rolActual = GetRolUsuarioActual();
+        if (string.IsNullOrWhiteSpace(rolActual))
+            return Forbid("No se pudo determinar el rol del usuario actual.");
+
+        var licencia = await _db.Licencias
+            .Include(l => l.Trabajador)
+                .ThenInclude(t => t.Cargo)
+            .Include(l => l.EstadoLicencia)
+            .FirstOrDefaultAsync(l => l.IdLicencia == id);
+
+        if (licencia is null)
+            return NotFound("Licencia no encontrada.");
+
+        var cargoTrabajador = licencia.Trabajador?.Cargo?.NombreCargo;
+
+        if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
+            return Forbid("No tiene permiso para eliminar la licencia de este trabajador.");
+
+        // Solo permitir eliminar si está 'Pendiente'
+        if (!string.Equals(licencia.EstadoLicencia?.ValorCategoria, "Pendiente", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Solo se pueden eliminar licencias en estado 'Pendiente'.");
+
+        _db.Licencias.Remove(licencia);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
 
     // helpers internos del controlador
     private static Horario? ObtenerHorarioDia(List<Horario> horarios, DateTime fecha)
@@ -523,4 +674,22 @@ public async Task<IActionResult> ObtenerLicencias()
             horaMaxima = TimeSpan.FromHours(16);
         }
     }
+
+    private static int ContarDiasHabiles(DateTime inicio, DateTime fin)
+    {
+        if (fin < inicio)
+            return 0;
+
+        int dias = 0;
+        for (var fecha = inicio.Date; fecha <= fin.Date; fecha = fecha.AddDays(1))
+        {
+            if (fecha.DayOfWeek != DayOfWeek.Saturday &&
+                fecha.DayOfWeek != DayOfWeek.Sunday)
+            {
+                dias++;
+            }
+        }
+        return dias;
+    }
+
 }
