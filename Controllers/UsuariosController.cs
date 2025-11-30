@@ -14,7 +14,7 @@ namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,Consejo")]
     public class UsuariosController : ControllerBase
     {
         private readonly AppDbContext _db;

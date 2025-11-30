@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador, Consejo")]
     [ApiController]
     public class AsistenciasController : ControllerBase
     {

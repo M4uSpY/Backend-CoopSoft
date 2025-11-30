@@ -12,7 +12,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
-    [Authorize(Roles = "Administrador,Casual")]
+    [Authorize(Roles = "Administrador,Casual,Consejo")]
     [ApiController]
     public class PersonasController : ControllerBase
     {
