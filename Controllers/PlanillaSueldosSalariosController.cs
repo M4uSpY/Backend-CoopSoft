@@ -309,6 +309,13 @@ namespace BackendCoopSoft.Controllers
 
             foreach (var tp in planilla.TrabajadorPlanillas)
             {
+                var diasRecalculados = await CalcularDiasPagadosAsync(
+                                                tp.IdTrabajador,
+                                                planilla.PeriodoDesde,
+                                                planilla.PeriodoHasta);
+
+                tp.DiasTrabajados = diasRecalculados;
+                tp.HorasTrabajadas = diasRecalculados * 8;
                 var manuales = tp.TrabajadorPlanillaValors
                     .Where(v => v.EsManual)
                     .ToList();

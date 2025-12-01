@@ -283,7 +283,7 @@ namespace BackendCoopSoft.Controllers
 
                             // filas
                             Fila("Sueldo Básico:", d.SueldoBasico, "Anticipos:", d.Anticipos);
-                            Fila("SB por días trabajados:", d.SbPorDiasTrabajados, "I.V.A.:", d.Iva);
+                            Fila("SB por días trabajados:", d.SbPorDiasTrabajados, "RC-IVA:", d.Iva);
                             Fila("Bono Antigüedad:", d.BonoAntiguedad, "Aporte Gestora:", d.AporteGestora);
                             Fila("Otros pagos:", d.OtrosPagos, "Aporte Provivienda:", d.AporteProvivienda);
                             Fila("O.I. Aporte Institucional:", d.OIAporteInstitucional, "Aporte Solidario:", d.AporteSolidario);

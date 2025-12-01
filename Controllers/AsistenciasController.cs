@@ -17,8 +17,7 @@ namespace BackendCoopSoft.Controllers
         private readonly AppDbContext _db;
         private readonly IMapper _mapper;
 
-        // (SOLO PARA PRUEBAS - CAMBIARLO)
-        private const int MINUTOS_MINIMOS_JORNADA = 4;
+        private const int MINUTOS_MINIMOS_JORNADA = 480;
 
         // (SOLO PARA PRUEBAS - CAMBIARLO)
         private const int MINUTOS_TOLERANCIA_RETRASO = 2;
@@ -241,11 +240,24 @@ namespace BackendCoopSoft.Controllers
 
             // Tiempo mínimo para poder marcar salida
             var horaEntradaReal = hoy + entrada.Hora;
-            var minimoSalida = horaEntradaReal.AddMinutes(MINUTOS_MINIMOS_JORNADA);
+
+            // Minutos de permiso temporal en este día
+            int minutosPermisoTemporal = await ObtenerMinutosPermisoTemporalDiaAsync(dto.IdTrabajador, hoy);
+
+            // Jornada mínima efectiva = 8h - minutos de permiso temporal
+            int minutosJornadaEfectiva = MINUTOS_MINIMOS_JORNADA - minutosPermisoTemporal;
+            if (minutosJornadaEfectiva < 0)
+                minutosJornadaEfectiva = 0;
+
+            var minimoSalida = horaEntradaReal.AddMinutes(minutosJornadaEfectiva);
+
 
             if (horaMarcada < minimoSalida)
             {
                 var faltan = minimoSalida - horaMarcada;
+
+                int horasFaltan = (int)faltan.TotalHours;
+                int minutosFaltan = faltan.Minutes;
 
                 return Ok(new AsistenciaRegistrarResultadoDTO
                 {
@@ -253,9 +265,10 @@ namespace BackendCoopSoft.Controllers
                     TipoMarcacion = "EN_PROCESO",
                     HoraEntrada = horaEntradaReal,
                     Mensaje = $"Aún no puede marcar SALIDA. " +
-                              $"Faltan {faltan.Minutes:D2} minuto(s) para completar la jornada mínima."
+                              $"Faltan {horasFaltan:D2} hora(s) y {minutosFaltan:D2} minuto(s) para completar la jornada mínima."
                 });
             }
+
 
             var asistenciaSalida = _mapper.Map<Asistencia>(dto);
             asistenciaSalida.Fecha = hoy;
@@ -281,6 +294,7 @@ namespace BackendCoopSoft.Controllers
 
             var licencias = await _db.Licencias
                 .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
                 .Where(l => l.IdTrabajador == idTrabajador
                             && l.FechaInicio <= fecha
                             && l.FechaFin >= fecha
@@ -288,22 +302,47 @@ namespace BackendCoopSoft.Controllers
                             && l.EstadoLicencia.ValorCategoria == "Aprobado")
                 .ToListAsync();
 
+            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal"; // ajusta al ValorCategoria real
+
             foreach (var l in licencias)
             {
                 var inicio = l.FechaInicio.Date + l.HoraInicio;
                 var fin = l.FechaFin.Date + l.HoraFin;
 
-                if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion <= fin)
-                    return true;
+                bool esPermisoTemporal =
+                    l.TipoLicencia != null &&
+                    string.Equals(l.TipoLicencia.ValorCategoria, TIPO_PERMISO_TEMPORAL,
+                        StringComparison.OrdinalIgnoreCase);
+
+                if (esPermisoTemporal)
+                {
+                    // Para permiso temporal: bloquea SOLO dentro del intervalo [inicio, fin)
+                    // → permite marcar EXACTO a la hora de fin
+                    if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion < fin)
+                        return true;
+                }
+                else
+                {
+                    // Para licencias "normales": bloquea todo el rango [inicio, fin]
+                    if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion <= fin)
+                        return true;
+                }
             }
 
             return false;
         }
 
-        private async Task<TimeSpan> ObtenerHoraEntradaEsperadaAsync(int idTrabajador, DateTime fecha, TimeSpan horaEntradaHorario)
+
+        private async Task<TimeSpan> ObtenerHoraEntradaEsperadaAsync(
+    int idTrabajador,
+    DateTime fecha,
+    TimeSpan horaEntradaHorario)
         {
+            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal"; // igual que en Clasificador
+
             var licencias = await _db.Licencias
                 .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
                 .Where(l =>
                     l.IdTrabajador == idTrabajador &&
                     l.FechaInicio <= fecha &&
@@ -316,6 +355,18 @@ namespace BackendCoopSoft.Controllers
 
             foreach (var l in licencias)
             {
+                // SOLO nos interesan los permisos temporales
+                bool esPermisoTemporal =
+                    l.TipoLicencia != null &&
+                    string.Equals(
+                        l.TipoLicencia.ValorCategoria,
+                        TIPO_PERMISO_TEMPORAL,
+                        StringComparison.OrdinalIgnoreCase);
+
+                if (!esPermisoTemporal)
+                    continue;
+
+                // Tramo del permiso EN ESE DÍA
                 var inicio = (l.FechaInicio.Date == fecha.Date)
                     ? l.HoraInicio
                     : TimeSpan.Zero;
@@ -324,7 +375,8 @@ namespace BackendCoopSoft.Controllers
                     ? l.HoraFin
                     : new TimeSpan(23, 59, 59);
 
-                // Si la licencia cubre la hora de entrada normal, corremos la hora de entrada al fin de la licencia
+                // Si el permiso cubre la hora de entrada normal,
+                // movemos la entrada al FIN del permiso
                 if (inicio <= horaEntradaHorario && fin > horaEntradaHorario)
                 {
                     if (fin > horaEsperada)
@@ -334,5 +386,50 @@ namespace BackendCoopSoft.Controllers
 
             return horaEsperada;
         }
+
+
+        private async Task<int> ObtenerMinutosPermisoTemporalDiaAsync(int idTrabajador, DateTime fecha)
+        {
+            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
+
+            var licencias = await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
+                .Where(l =>
+                    l.IdTrabajador == idTrabajador &&
+                    l.FechaInicio <= fecha &&
+                    l.FechaFin >= fecha &&
+                    l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
+                    l.EstadoLicencia.ValorCategoria == "Aprobado" &&
+                    l.TipoLicencia != null &&
+                    l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL)
+                .ToListAsync();
+
+            double totalMinutos = 0;
+
+            foreach (var l in licencias)
+            {
+                // intervalo de permiso EN ESE DÍA
+                var inicio = (l.FechaInicio.Date == fecha.Date)
+                    ? l.HoraInicio
+                    : TimeSpan.Zero;
+
+                var fin = (l.FechaFin.Date == fecha.Date)
+                    ? l.HoraFin
+                    : new TimeSpan(23, 59, 59);
+
+                if (fin <= inicio) continue;
+
+                totalMinutos += (fin - inicio).TotalMinutes;
+            }
+
+            // Limitar a la jornada completa por seguridad
+            if (totalMinutos < 0) totalMinutos = 0;
+            if (totalMinutos > MINUTOS_MINIMOS_JORNADA)
+                totalMinutos = MINUTOS_MINIMOS_JORNADA;
+
+            return (int)Math.Round(totalMinutos);
+        }
+
     }
 }
