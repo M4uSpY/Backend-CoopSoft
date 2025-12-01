@@ -10,7 +10,7 @@ namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    // [Authorize]
     public class VacacionesController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -130,6 +130,8 @@ namespace BackendCoopSoft.Controllers
                 .Select(s => new SolicitudVacListarDTO
                 {
                     IdVacacion = s.IdVacacion,
+                    IdTrabajador = s.IdTrabajador,
+
                     CI = s.Trabajador.Persona.CarnetIdentidad,
                     ApellidosNombres =
                         s.Trabajador.Persona.ApellidoPaterno + " " +
@@ -347,6 +349,142 @@ namespace BackendCoopSoft.Controllers
                 new { id = solicitudVacacion.IdVacacion },
                 solicitudVacacion.IdVacacion);
         }
+        [HttpGet("ping")]
+        public string PingVacaciones()
+        {
+            return "Vacaciones v2";
+        }
+
+
+        // ==================== EDITAR VACACIÓN =====================
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> EditarSolicitud(int id, [FromBody] SolicitudVacEditarDTO dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (dto.FechaFin.Date < dto.FechaInicio.Date)
+                return BadRequest("La fecha fin no puede ser menor a la fecha inicio.");
+
+            var solicitud = await _db.Vacaciones
+                .Include(s => s.Trabajador)
+                    .ThenInclude(t => t.Cargo)
+                .Include(s => s.EstadoSolicitud)
+                .FirstOrDefaultAsync(s => s.IdVacacion == id);
+
+            if (solicitud is null)
+                return NotFound("Solicitud de vacación no encontrada.");
+
+            // 1) Validar rol que edita
+            var rolActual = GetRolUsuarioActual();
+            if (string.IsNullOrWhiteSpace(rolActual))
+                return Forbid("No se pudo determinar el rol del usuario actual.");
+
+            var cargoTrabajador = solicitud.Trabajador?.Cargo?.NombreCargo;
+
+            if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
+                return Forbid("No tiene permiso para editar la vacación de este trabajador.");
+
+            // 2) Estado permitido para editar: Pendiente o Aprobado
+            var estado = solicitud.EstadoSolicitud?.ValorCategoria ?? string.Empty;
+
+            if (!string.Equals(estado, "Pendiente", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(estado, "Aprobado", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Solo se pueden editar solicitudes en estado 'Pendiente' o 'Aprobado'.");
+            }
+
+            var nuevaFechaInicio = dto.FechaInicio.Date;
+            var nuevaFechaFin = dto.FechaFin.Date;
+
+            // (opcional) Si quieres que solo recorten la vacación:
+            // if (nuevaFechaFin > solicitud.FechaFin.Date)
+            //     return BadRequest("Solo se permite acortar la vacación, no extenderla.");
+
+            // 3) Validar solapamientos con OTRAS vacaciones
+            var vacSolapadas = await _db.Vacaciones
+                .Include(v => v.EstadoSolicitud)
+                .Where(v =>
+                    v.IdTrabajador == solicitud.IdTrabajador &&
+                    v.IdVacacion != solicitud.IdVacacion &&              // excluir la que se está editando
+                    v.EstadoSolicitud.ValorCategoria != "Rechazado" &&
+                    v.FechaInicio <= nuevaFechaFin &&
+                    v.FechaFin >= nuevaFechaInicio)
+                .ToListAsync();
+
+            if (vacSolapadas.Any())
+            {
+                var otra = vacSolapadas.First();
+                return BadRequest(
+                    $"La nueva fecha se solapa con otra vacación del {otra.FechaInicio:dd/MM/yyyy} " +
+                    $"al {otra.FechaFin:dd/MM/yyyy} (estado: {otra.EstadoSolicitud.ValorCategoria}).");
+            }
+
+            // 4) Validar solapamiento con licencias
+            var licSolapadas = await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
+                .Where(l =>
+                    l.IdTrabajador == solicitud.IdTrabajador &&
+                    l.EstadoLicencia.ValorCategoria != "Rechazado" &&
+                    l.FechaInicio <= nuevaFechaFin &&
+                    l.FechaFin >= nuevaFechaInicio)
+                .ToListAsync();
+
+            if (licSolapadas.Any())
+            {
+                var lic = licSolapadas.First();
+                return BadRequest(
+                    $"La nueva fecha se solapa con una licencia del {lic.FechaInicio:dd/MM/yyyy} " +
+                    $"al {lic.FechaFin:dd/MM/yyyy} (tipo: {lic.TipoLicencia.ValorCategoria}, " +
+                    $"estado: {lic.EstadoLicencia.ValorCategoria}).");
+            }
+
+            // 5) Validar que no se pase del derecho de días (como en aprobar)
+            bool descuentaVacacion = true;
+            if (descuentaVacacion)
+            {
+                if (solicitud.Trabajador is null)
+                    return StatusCode(500, "El trabajador no tiene registrada la fecha de ingreso.");
+
+                var fechaIngreso = solicitud.Trabajador.FechaIngreso;
+                var fechaRef = nuevaFechaInicio;
+
+                var antiguedadAnios = CalcularAntiguedadEnAnios(fechaIngreso, fechaRef);
+                var diasDerecho = ObtenerDiasVacacionPorAntiguedad(antiguedadAnios);
+
+                if (diasDerecho == 0)
+                    return BadRequest("El trabajador aún no cumple un año de servicio, por lo que no tiene derecho a vacación.");
+
+                var gestion = fechaRef.Year;
+
+                // 👀 Aquí usamos el helper que ya creaste, excluyendo ESTA misma solicitud
+                var diasYaUsados = await CalcularDiasVacacionUsadosAsync(
+                    solicitud.IdTrabajador,
+                    gestion,
+                    solicitud.IdVacacion);
+
+                var diasSolicitudNueva = ContarDiasHabiles(nuevaFechaInicio, nuevaFechaFin);
+
+                if (diasYaUsados + diasSolicitudNueva > diasDerecho)
+                {
+                    var disponible = diasDerecho - diasYaUsados;
+                    return BadRequest(
+                        $"Con las nuevas fechas, se excede el derecho a vacación. " +
+                        $"Días disponibles: {disponible}, días solicitados: {diasSolicitudNueva}.");
+                }
+            }
+
+            // 6) Aplicar cambios
+            solicitud.FechaInicio = nuevaFechaInicio;
+            solicitud.FechaFin = nuevaFechaFin;
+            solicitud.Motivo = dto.Motivo.Trim();
+            solicitud.Observacion = dto.Observacion;
+
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
 
         // ==================== RESUMEN VACACIONES =====================
         [HttpGet("Resumen/{idTrabajador:int}")]
