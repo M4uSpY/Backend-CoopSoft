@@ -467,9 +467,7 @@ namespace BackendCoopSoft.Controllers
             return Ok("Planilla calculada correctamente para Sueldos y Salarios.");
         }
         [HttpPut("trabajador-planilla/{idTrabajadorPlanilla:int}/rc-iva")]
-        public async Task<IActionResult> ActualizarRcIva(
-    int idTrabajadorPlanilla,
-    [FromBody] RcIvaActualizarDTO dto)
+        public async Task<IActionResult> ActualizarRcIva(int idTrabajadorPlanilla,[FromBody] RcIvaActualizarDTO dto)
         {
             if (dto == null)
                 return BadRequest("Datos inválidos.");
@@ -537,6 +535,74 @@ namespace BackendCoopSoft.Controllers
             return Ok("RC-IVA actualizado correctamente (valor manual).");
         }
 
+        [HttpPut("trabajador-planilla/{idTrabajadorPlanilla:int}/otros-desc")]
+        public async Task<IActionResult> ActualizarOtrosDesc(int idTrabajadorPlanilla,[FromBody] OtrosDescActualizarDTO dto)
+        {
+            if (dto == null)
+                return BadRequest("Datos inválidos.");
+
+            // 1) Buscar la fila de TrabajadorPlanilla
+            var tp = await _db.TrabajadorPlanillas
+                .Include(x => x.TrabajadorPlanillaValors)
+                    .ThenInclude(v => v.Concepto)
+                .FirstOrDefaultAsync(x => x.IdTrabajadorPlanilla == idTrabajadorPlanilla);
+
+            if (tp == null)
+                return NotFound("No existe el registro Trabajador_Planilla.");
+
+            // 2) Obtener el concepto OTROS_DESC
+            var conceptoOtrosDesc = await _db.Conceptos
+                .FirstOrDefaultAsync(c => c.Codigo == "OTROS_DESC");
+
+            if (conceptoOtrosDesc == null)
+                return BadRequest("No existe el concepto OTROS_DESC en la tabla Concepto.");
+
+            // 3) Buscar si ya hay un valor manual para OTROS_DESC
+            var existente = tp.TrabajadorPlanillaValors
+                .FirstOrDefault(v =>
+                    v.EsManual &&
+                    v.Concepto != null &&
+                    v.Concepto.Codigo == "OTROS_DESC");
+
+            var monto = Math.Round(dto.MontoOtrosDesc, 2);
+
+            if (existente == null)
+            {
+                if (monto <= 0)
+                {
+                    // Nada que crear
+                    return Ok("Otros descuentos no registrados (monto <= 0).");
+                }
+
+                // Crear un nuevo registro manual
+                var nuevo = new TrabajadorPlanillaValor
+                {
+                    IdTrabajadorPlanilla = tp.IdTrabajadorPlanilla,
+                    IdConcepto = conceptoOtrosDesc.IdConcepto,
+                    Valor = monto,
+                    EsManual = true
+                };
+                _db.TrabajadorPlanillaValores.Add(nuevo);
+            }
+            else
+            {
+                if (monto <= 0)
+                {
+                    // Igual que en RC-IVA: puedes eliminar o dejar en 0, aquí lo dejo en 0
+                    // _db.TrabajadorPlanillaValores.Remove(existente);
+                    existente.Valor = 0m;
+                }
+                else
+                {
+                    existente.Valor = monto;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok("Otros descuentos (OTROS_DESC) actualizados correctamente (valor manual).");
+        }
+
+
         // ==========================================
         // 4) OBTENER FILAS TIPO EXCEL
         // ==========================================
@@ -584,7 +650,7 @@ namespace BackendCoopSoft.Controllers
                     var otrosDesc = GetValor(tp, "OTROS_DESC");
 
                     // REGLA DE UMBRAL
-                    var rcIva = totalGanado > UMBRAL_RC_IVA ? rcIvaReal : 0m;
+                    var rcIva = rcIvaReal;
 
                     var totalDesc = gestora + rcIva + apSol + otros668 + otrosDesc;
                     var liquido = totalGanado - totalDesc;

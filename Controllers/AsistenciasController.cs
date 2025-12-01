@@ -466,8 +466,5 @@ namespace BackendCoopSoft.Controllers
 
             return (int)Math.Round(totalMinutos, MidpointRounding.AwayFromZero);
         }
-
-
-
     }
 }

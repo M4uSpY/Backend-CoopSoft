@@ -23,7 +23,7 @@ public class BoletaPagoDetalleDTO
     public decimal TotalGanado { get; set; }
 
     // Descuentos
-    public decimal Anticipos { get; set; }             // si no usas → 0
+    public decimal OtrosDesc { get; set; }                   // Otros Descuentos
     public decimal Iva { get; set; }                   // RC_IVA_13
     public decimal AporteGestora { get; set; }         // GESTORA_1221
     public decimal AporteProvivienda { get; set; }     // si no manejas, 0

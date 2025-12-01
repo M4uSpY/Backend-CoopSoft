@@ -150,8 +150,7 @@ namespace BackendCoopSoft.Controllers
             var otros668 = GetValor("OTROS_DESC_668");
             var otrosDesc = GetValor("OTROS_DESC");
 
-            var otrosFinal = otros668 + otrosDesc;
-            var totalDesc = gestora + rcIva + apSol + otrosFinal;
+            var totalDesc = gestora + rcIva + apSol + otros668 + otrosDesc;
             var liquido = totalGanado - totalDesc;
 
             var cultura = new CultureInfo("es-ES");
@@ -179,12 +178,13 @@ namespace BackendCoopSoft.Controllers
                 OIAporteInstitucional = apCoop,
                 TotalGanado = totalGanado,
 
-                Anticipos = 0m,
+                // Anticipos = 0m,
+                OtrosDesc = otrosDesc,
                 Iva = rcIva,
                 AporteGestora = gestora,
                 AporteProvivienda = 0m,
                 AporteSolidario = apSol,
-                OtrosDescuentos = otrosFinal,
+                OtrosDescuentos = otros668,
                 TotalDescuentos = totalDesc,
                 LiquidoPagable = liquido
             };
@@ -282,12 +282,12 @@ namespace BackendCoopSoft.Controllers
                             }
 
                             // filas
-                            Fila("Sueldo Básico:", d.SueldoBasico, "Anticipos:", d.Anticipos);
+                            Fila("Sueldo Básico:", d.SueldoBasico, "Otros Descuentos:", d.OtrosDesc);
                             Fila("SB por días trabajados:", d.SbPorDiasTrabajados, "RC-IVA:", d.Iva);
                             Fila("Bono Antigüedad:", d.BonoAntiguedad, "Aporte Gestora:", d.AporteGestora);
                             Fila("Otros pagos:", d.OtrosPagos, "Aporte Provivienda:", d.AporteProvivienda);
                             Fila("O.I. Aporte Institucional:", d.OIAporteInstitucional, "Aporte Solidario:", d.AporteSolidario);
-                            Fila("", 0m, "Otros Descuentos:", d.OtrosDescuentos);
+                            Fila("", 0m, "Otros Descuentos 6.68%:", d.OtrosDescuentos);
 
                             // fila totales
                             table.Cell().Text("TOTAL GANADO:").Bold();
