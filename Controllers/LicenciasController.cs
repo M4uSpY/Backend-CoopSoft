@@ -443,13 +443,62 @@ public class LicenciasController : ControllerBase
                 l.FechaFin >= fechaInicio)
             .ToListAsync();
 
-        if (licenciasSolapadas.Any())
+        if (esPermisoTemporal)
         {
-            var existente = licenciasSolapadas.First();
-            return BadRequest(
-                $"El rango seleccionado se solapa con otra licencia de tipo '{existente.TipoLicencia.ValorCategoria}' " +
-                $"del {existente.FechaInicio:dd/MM/yyyy} al {existente.FechaFin:dd/MM/yyyy}.");
+            // 1) NO permitir permiso temporal sobre un día que ya tiene otra licencia NO temporal
+            var licenciasNoTemporales = licenciasSolapadas
+                .Where(l =>
+                    l.TipoLicencia != null &&
+                    !string.Equals(l.TipoLicencia.ValorCategoria, "Permiso temporal", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (licenciasNoTemporales.Any())
+            {
+                var existente = licenciasNoTemporales.First();
+                return BadRequest(
+                    $"El permiso temporal se solapa en fechas con una licencia de tipo '{existente.TipoLicencia.ValorCategoria}' " +
+                    $"del {existente.FechaInicio:dd/MM/yyyy} al {existente.FechaFin:dd/MM/yyyy}.");
+            }
+
+            // 2) Permitir varios permisos temporales el MISMO día,
+            //    pero sin solapamiento de HORARIOS
+            var permisosTemporalesMismoDia = licenciasSolapadas
+                .Where(l =>
+                    l.TipoLicencia != null &&
+                    string.Equals(l.TipoLicencia.ValorCategoria, "Permiso temporal", StringComparison.OrdinalIgnoreCase) &&
+                    l.FechaInicio.Date == fechaInicio.Date &&
+                    l.FechaFin.Date == fechaFin.Date)
+                .ToList();
+
+            // ¿Algún permiso temporal existente se cruza en horas con el nuevo?
+            var permisoConHorasSolapadas = permisosTemporalesMismoDia.FirstOrDefault(l =>
+                l.HoraInicio < horaFin &&   // inicio existente < fin nuevo
+                l.HoraFin > horaInicio      // fin existente > inicio nuevo
+            );
+
+            if (permisoConHorasSolapadas != null)
+            {
+                return BadRequest(
+                    $"El horario solicitado ({horaInicio:hh\\:mm} - {horaFin:hh\\:mm}) " +
+                    $"se solapa con otro permiso temporal ya registrado " +
+                    $"({permisoConHorasSolapadas.HoraInicio:hh\\:mm} - {permisoConHorasSolapadas.HoraFin:hh\\:mm}) " +
+                    $"el día {fechaInicio:dd/MM/yyyy}.");
+            }
+
+            // Si llega aquí: ✔ puede tener varios permisos temporales ese día, sin solaparse y respetando las 3h mensuales (que ya validas más arriba)
         }
+        else
+        {
+            // Licencias normales: seguir con la lógica antigua (no permitir solape de fechas)
+            if (licenciasSolapadas.Any())
+            {
+                var existente = licenciasSolapadas.First();
+                return BadRequest(
+                    $"El rango seleccionado se solapa con otra licencia de tipo '{existente.TipoLicencia.ValorCategoria}' " +
+                    $"del {existente.FechaInicio:dd/MM/yyyy} al {existente.FechaFin:dd/MM/yyyy}.");
+            }
+        }
+
 
         // ======================================================
         //  LIMITAR LICENCIAS ÚNICAS (Luto / Duelo, Paternidad, Matrimonio) ⭐

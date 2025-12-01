@@ -229,6 +229,7 @@ namespace BackendCoopSoft.Controllers
             // Licencias aprobadas
             var licencias = await _db.Licencias
                 .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
                 .Where(l => l.IdTrabajador == idTrabajador
                             && l.EstadoLicencia.Categoria == "EstadoSolicitud"
                             && l.EstadoLicencia.ValorCategoria == "Aprobado"
@@ -249,13 +250,35 @@ namespace BackendCoopSoft.Controllers
                 bool diaEnVacacion = vacaciones.Any(v =>
                     v.FechaInicio.Date <= fecha && v.FechaFin.Date >= fecha);
 
-                // Día con licencia (aprobada) – se cuenta como pagado
-                bool diaEnLicencia = licencias.Any(l =>
-                    l.FechaInicio.Date <= fecha && l.FechaFin.Date >= fecha);
+                // Todas las licencias que cubren este día
+                var licenciasDia = licencias
+                    .Where(l => l.FechaInicio.Date <= fecha && l.FechaFin.Date >= fecha)
+                    .ToList();
 
-                if (jornadaCompleta || diaEnVacacion || diaEnLicencia)
+                // 👇 Ajusta este string al ValorCategoria real de tu TipoLicencia para permiso temporal
+                const string TIPO_PERMISO_TEMPORAL = "Permiso Temporal";
+
+                // ¿Hay licencias que NO sean permiso temporal? (maternidad, enfermedad, etc.)
+                bool diaConLicenciaNoTemporal = licenciasDia.Any(l =>
+                    l.TipoLicencia != null &&
+                    !string.Equals(l.TipoLicencia.ValorCategoria, TIPO_PERMISO_TEMPORAL, StringComparison.OrdinalIgnoreCase));
+
+                // ¿Hay permiso temporal este día?
+                bool diaConPermisoTemporal = licenciasDia.Any(l =>
+                    l.TipoLicencia != null &&
+                    string.Equals(l.TipoLicencia.ValorCategoria, TIPO_PERMISO_TEMPORAL, StringComparison.OrdinalIgnoreCase));
+
+                // Regla mejorada:
+                // - Licencias NO temporales → cuentan como día pagado aunque no haya asistencias.
+                // - Permiso temporal → solo cuenta como día pagado si hubo jornada trabajada (entrada+salida).
+                bool diaEnLicenciaQueCuentaComoTrabajada =
+                    diaConLicenciaNoTemporal ||
+                    (diaConPermisoTemporal && jornadaCompleta);
+
+                if (jornadaCompleta || diaEnVacacion || diaEnLicenciaQueCuentaComoTrabajada)
                     diasPagados++;
             }
+
 
             return diasPagados;
         }
@@ -616,7 +639,7 @@ namespace BackendCoopSoft.Controllers
         }
 
         [HttpGet("buscar")]
-        public async Task<ActionResult<PlanillaResumenDTO>> BuscarPorPeriodo([FromQuery] int gestion,[FromQuery] int mes,[FromQuery] int idTipoPlanilla = 31)   // 31 = Sueldos y Salarios
+        public async Task<ActionResult<PlanillaResumenDTO>> BuscarPorPeriodo([FromQuery] int gestion, [FromQuery] int mes, [FromQuery] int idTipoPlanilla = 31)   // 31 = Sueldos y Salarios
         {
             var p = await _db.Planillas
                 .FirstOrDefaultAsync(x =>

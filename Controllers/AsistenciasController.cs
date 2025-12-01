@@ -44,6 +44,7 @@ namespace BackendCoopSoft.Controllers
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> RegistrarAsistencia([FromBody] AsistenciaCrearDTO dto)
         {
             var hoy = dto.Fecha.Date;
