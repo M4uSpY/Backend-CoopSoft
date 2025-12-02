@@ -242,7 +242,13 @@ namespace BackendCoopSoft.Controllers
             var horaEntradaReal = hoy + entrada.Hora;
 
             // Minutos de permiso temporal en este día
-            int minutosPermisoTemporal = await ObtenerMinutosPermisoTemporalDiaAsync(dto.IdTrabajador, hoy);
+            // Minutos de permiso temporal EN LA JORNADA de hoy
+            int minutosPermisoTemporal = await ObtenerMinutosPermisoTemporalDiaAsync(
+                dto.IdTrabajador,
+                hoy,
+                horarioHoy.HoraEntrada,
+                horarioHoy.HoraSalida);
+
 
             // Jornada mínima efectiva = 8h - minutos de permiso temporal
             int minutosJornadaEfectiva = MINUTOS_MINIMOS_JORNADA - minutosPermisoTemporal;
@@ -388,48 +394,63 @@ namespace BackendCoopSoft.Controllers
         }
 
 
-        private async Task<int> ObtenerMinutosPermisoTemporalDiaAsync(int idTrabajador, DateTime fecha)
-        {
-            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
+        private async Task<int> ObtenerMinutosPermisoTemporalDiaAsync(
+    int idTrabajador,
+    DateTime fecha,
+    TimeSpan horaJornadaInicio,
+    TimeSpan horaJornadaFin)
+{
+    const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
 
-            var licencias = await _db.Licencias
-                .Include(l => l.EstadoLicencia)
-                .Include(l => l.TipoLicencia)
-                .Where(l =>
-                    l.IdTrabajador == idTrabajador &&
-                    l.FechaInicio <= fecha &&
-                    l.FechaFin >= fecha &&
-                    l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
-                    l.EstadoLicencia.ValorCategoria == "Aprobado" &&
-                    l.TipoLicencia != null &&
-                    l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL)
-                .ToListAsync();
+    // Jornada de trabajo del día
+    var inicioJornada = fecha.Date + horaJornadaInicio;
+    var finJornada    = fecha.Date + horaJornadaFin;
 
-            double totalMinutos = 0;
+    var licencias = await _db.Licencias
+        .Include(l => l.EstadoLicencia)
+        .Include(l => l.TipoLicencia)
+        .Where(l =>
+            l.IdTrabajador == idTrabajador &&
+            l.FechaInicio <= fecha &&
+            l.FechaFin >= fecha &&
+            l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
+            l.EstadoLicencia.ValorCategoria == "Aprobado" &&
+            l.TipoLicencia != null &&
+            l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL)
+        .ToListAsync();
 
-            foreach (var l in licencias)
-            {
-                // intervalo de permiso EN ESE DÍA
-                var inicio = (l.FechaInicio.Date == fecha.Date)
-                    ? l.HoraInicio
-                    : TimeSpan.Zero;
+    double totalMinutos = 0;
 
-                var fin = (l.FechaFin.Date == fecha.Date)
-                    ? l.HoraFin
-                    : new TimeSpan(23, 59, 59);
+    foreach (var l in licencias)
+    {
+        // Permiso de ese día
+        var inicioPermiso = fecha.Date + l.HoraInicio;
+        var finPermiso    = fecha.Date + l.HoraFin;
 
-                if (fin <= inicio) continue;
+        // Intersección permiso ⨉ jornada
+        var inicioEfectivo = inicioPermiso > inicioJornada ? inicioPermiso : inicioJornada;
+        var finEfectivo    = finPermiso  < finJornada    ? finPermiso    : finJornada;
 
-                totalMinutos += (fin - inicio).TotalMinutes;
-            }
+        if (finEfectivo <= inicioEfectivo)
+            continue;
 
-            // Limitar a la jornada completa por seguridad
-            if (totalMinutos < 0) totalMinutos = 0;
-            if (totalMinutos > MINUTOS_MINIMOS_JORNADA)
-                totalMinutos = MINUTOS_MINIMOS_JORNADA;
+        var minutos = (finEfectivo - inicioEfectivo).TotalMinutes;
 
-            return (int)Math.Round(totalMinutos);
-        }
+        // DEBUG (puedes dejar unos días para probar)
+        Console.WriteLine($"Permiso temporal día {fecha:yyyy-MM-dd}: {inicioEfectivo:HH:mm} - {finEfectivo:HH:mm} = {minutos} min");
+
+        totalMinutos += minutos;
+    }
+
+    // Limitar por seguridad
+    if (totalMinutos < 0) totalMinutos = 0;
+    if (totalMinutos > MINUTOS_MINIMOS_JORNADA)
+        totalMinutos = MINUTOS_MINIMOS_JORNADA;
+
+    // Redondeo “normal”
+    return (int)Math.Round(totalMinutos, MidpointRounding.AwayFromZero);
+}
+
 
     }
 }
