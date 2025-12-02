@@ -2608,6 +2608,8 @@ C:\Users\darkp\Music\SoftCoop\Backend\Backend-CoopSoft\obj\Debug\net8.0\BackendC
 C:\Users\darkp\Music\SoftCoop\Backend\Backend-CoopSoft\obj\Debug\net8.0\ref\BackendCoopSoft.dll
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\appsettings.json
+C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\global.json
+C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\BackendCoopSoft.staticwebassets.runtime.json
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\LatoFont\Lato-Black.ttf
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\LatoFont\Lato-BlackItalic.ttf
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\LatoFont\Lato-Bold.ttf
@@ -2627,8 +2629,6 @@ C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\LatoFon
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\LatoFont\Lato-Thin.ttf
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\LatoFont\Lato-ThinItalic.ttf
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\LatoFont\OFL.txt
-C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\global.json
-C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\BackendCoopSoft.staticwebassets.runtime.json
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\BackendCoopSoft.exe
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\BackendCoopSoft.deps.json
 C:\Users\darkp\Music\SoftCoop\Servidor\Backend-CoopSoft\bin\Debug\net8.0\BackendCoopSoft.runtimeconfig.json
