@@ -25,6 +25,8 @@ namespace BackendCoopSoft.Controllers
         // IdTipoFalta para ATRASO (Clasificador)
         private const int ID_TIPO_FALTA_ATRASO = 18;
 
+        private const int ID_TIPO_LICENCIA_CUMPLEANIOS = 24;
+
 
 
         public AsistenciasController(AppDbContext db, IMapper mapper)
@@ -309,20 +311,24 @@ namespace BackendCoopSoft.Controllers
                 .ToListAsync();
 
             const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
+            // const string TIPO_CUMPLEANIOS = "Cumpleaños";
 
             foreach (var l in licencias)
             {
+                if (l.TipoLicencia == null)
+                    continue;
+
                 bool esPermisoTemporal =
-                    l.TipoLicencia != null &&
                     string.Equals(
                         l.TipoLicencia.ValorCategoria,
                         TIPO_PERMISO_TEMPORAL,
                         StringComparison.OrdinalIgnoreCase);
 
+                bool esCumpleanios = l.IdTipoLicencia == ID_TIPO_LICENCIA_CUMPLEANIOS;
+
                 // 🔹 IMPORTANTE:
-                // LOS PERMISOS TEMPORALES NO BLOQUEAN MARCACIÓN
-                // (ya se consideran en hora de entrada y jornada mínima)
-                if (esPermisoTemporal)
+                // Permiso temporal y Cumpleaños NO bloquean marcación
+                if (esPermisoTemporal || esCumpleanios)
                     continue;
 
                 var inicio = l.FechaInicio.Date + l.HoraInicio;
@@ -336,12 +342,14 @@ namespace BackendCoopSoft.Controllers
             return false;
         }
 
+
         private async Task<TimeSpan> ObtenerHoraEntradaEsperadaAsync(
     int idTrabajador,
     DateTime fecha,
     TimeSpan horaEntradaHorario)
         {
-            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal"; // igual que en Clasificador
+            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
+            // const string TIPO_CUMPLEANIOS = "Cumpleaños";
 
             var licencias = await _db.Licencias
                 .Include(l => l.EstadoLicencia)
@@ -358,15 +366,20 @@ namespace BackendCoopSoft.Controllers
 
             foreach (var l in licencias)
             {
-                // SOLO nos interesan los permisos temporales
+                if (l.TipoLicencia == null)
+                    continue;
+
+                // SOLO nos interesan los permisos que NO bloquean:
+                // Permiso temporal + Cumpleaños
                 bool esPermisoTemporal =
-                    l.TipoLicencia != null &&
                     string.Equals(
                         l.TipoLicencia.ValorCategoria,
                         TIPO_PERMISO_TEMPORAL,
                         StringComparison.OrdinalIgnoreCase);
 
-                if (!esPermisoTemporal)
+                bool esCumpleanios = l.IdTipoLicencia == ID_TIPO_LICENCIA_CUMPLEANIOS;
+
+                if (!esPermisoTemporal && !esCumpleanios)
                     continue;
 
                 // Tramo del permiso EN ESE DÍA
@@ -391,6 +404,7 @@ namespace BackendCoopSoft.Controllers
         }
 
 
+
         private async Task<int> ObtenerMinutosPermisoTemporalDiaAsync(
     int idTrabajador,
     DateTime fecha,
@@ -398,6 +412,7 @@ namespace BackendCoopSoft.Controllers
     TimeSpan horaJornadaFin)
         {
             const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
+            // const string TIPO_CUMPLEANIOS = "Cumpleaños";
 
             // Jornada de trabajo del día
             var inicioJornada = fecha.Date + horaJornadaInicio;
@@ -413,7 +428,10 @@ namespace BackendCoopSoft.Controllers
                     l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
                     l.EstadoLicencia.ValorCategoria == "Aprobado" &&
                     l.TipoLicencia != null &&
-                    l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL)
+                    (
+                        l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL ||
+                        l.IdTipoLicencia == ID_TIPO_LICENCIA_CUMPLEANIOS
+                    ))
                 .ToListAsync();
 
             double totalMinutos = 0;
@@ -434,7 +452,9 @@ namespace BackendCoopSoft.Controllers
                 var minutos = (finEfectivo - inicioEfectivo).TotalMinutes;
 
                 // DEBUG (puedes dejar unos días para probar)
-                Console.WriteLine($"Permiso temporal día {fecha:yyyy-MM-dd}: {inicioEfectivo:HH:mm} - {finEfectivo:HH:mm} = {minutos} min");
+                Console.WriteLine(
+                    $"Permiso día {fecha:yyyy-MM-dd} ({l.TipoLicencia.ValorCategoria}): " +
+                    $"{inicioEfectivo:HH:mm} - {finEfectivo:HH:mm} = {minutos} min");
 
                 totalMinutos += minutos;
             }
@@ -444,9 +464,9 @@ namespace BackendCoopSoft.Controllers
             if (totalMinutos > MINUTOS_MINIMOS_JORNADA)
                 totalMinutos = MINUTOS_MINIMOS_JORNADA;
 
-            // Redondeo “normal”
             return (int)Math.Round(totalMinutos, MidpointRounding.AwayFromZero);
         }
+
 
 
     }
