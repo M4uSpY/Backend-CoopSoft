@@ -308,36 +308,33 @@ namespace BackendCoopSoft.Controllers
                             && l.EstadoLicencia.ValorCategoria == "Aprobado")
                 .ToListAsync();
 
-            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal"; // ajusta al ValorCategoria real
+            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
 
             foreach (var l in licencias)
             {
+                bool esPermisoTemporal =
+                    l.TipoLicencia != null &&
+                    string.Equals(
+                        l.TipoLicencia.ValorCategoria,
+                        TIPO_PERMISO_TEMPORAL,
+                        StringComparison.OrdinalIgnoreCase);
+
+                // 🔹 IMPORTANTE:
+                // LOS PERMISOS TEMPORALES NO BLOQUEAN MARCACIÓN
+                // (ya se consideran en hora de entrada y jornada mínima)
+                if (esPermisoTemporal)
+                    continue;
+
                 var inicio = l.FechaInicio.Date + l.HoraInicio;
                 var fin = l.FechaFin.Date + l.HoraFin;
 
-                bool esPermisoTemporal =
-                    l.TipoLicencia != null &&
-                    string.Equals(l.TipoLicencia.ValorCategoria, TIPO_PERMISO_TEMPORAL,
-                        StringComparison.OrdinalIgnoreCase);
-
-                if (esPermisoTemporal)
-                {
-                    // Para permiso temporal: bloquea SOLO dentro del intervalo [inicio, fin)
-                    // → permite marcar EXACTO a la hora de fin
-                    if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion < fin)
-                        return true;
-                }
-                else
-                {
-                    // Para licencias "normales": bloquea todo el rango [inicio, fin]
-                    if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion <= fin)
-                        return true;
-                }
+                // Licencias "normales": bloquean todo el intervalo
+                if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion <= fin)
+                    return true;
             }
 
             return false;
         }
-
 
         private async Task<TimeSpan> ObtenerHoraEntradaEsperadaAsync(
     int idTrabajador,
@@ -399,57 +396,57 @@ namespace BackendCoopSoft.Controllers
     DateTime fecha,
     TimeSpan horaJornadaInicio,
     TimeSpan horaJornadaFin)
-{
-    const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
+        {
+            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
 
-    // Jornada de trabajo del día
-    var inicioJornada = fecha.Date + horaJornadaInicio;
-    var finJornada    = fecha.Date + horaJornadaFin;
+            // Jornada de trabajo del día
+            var inicioJornada = fecha.Date + horaJornadaInicio;
+            var finJornada = fecha.Date + horaJornadaFin;
 
-    var licencias = await _db.Licencias
-        .Include(l => l.EstadoLicencia)
-        .Include(l => l.TipoLicencia)
-        .Where(l =>
-            l.IdTrabajador == idTrabajador &&
-            l.FechaInicio <= fecha &&
-            l.FechaFin >= fecha &&
-            l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
-            l.EstadoLicencia.ValorCategoria == "Aprobado" &&
-            l.TipoLicencia != null &&
-            l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL)
-        .ToListAsync();
+            var licencias = await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
+                .Where(l =>
+                    l.IdTrabajador == idTrabajador &&
+                    l.FechaInicio <= fecha &&
+                    l.FechaFin >= fecha &&
+                    l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
+                    l.EstadoLicencia.ValorCategoria == "Aprobado" &&
+                    l.TipoLicencia != null &&
+                    l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL)
+                .ToListAsync();
 
-    double totalMinutos = 0;
+            double totalMinutos = 0;
 
-    foreach (var l in licencias)
-    {
-        // Permiso de ese día
-        var inicioPermiso = fecha.Date + l.HoraInicio;
-        var finPermiso    = fecha.Date + l.HoraFin;
+            foreach (var l in licencias)
+            {
+                // Permiso de ese día
+                var inicioPermiso = fecha.Date + l.HoraInicio;
+                var finPermiso = fecha.Date + l.HoraFin;
 
-        // Intersección permiso ⨉ jornada
-        var inicioEfectivo = inicioPermiso > inicioJornada ? inicioPermiso : inicioJornada;
-        var finEfectivo    = finPermiso  < finJornada    ? finPermiso    : finJornada;
+                // Intersección permiso ⨉ jornada
+                var inicioEfectivo = inicioPermiso > inicioJornada ? inicioPermiso : inicioJornada;
+                var finEfectivo = finPermiso < finJornada ? finPermiso : finJornada;
 
-        if (finEfectivo <= inicioEfectivo)
-            continue;
+                if (finEfectivo <= inicioEfectivo)
+                    continue;
 
-        var minutos = (finEfectivo - inicioEfectivo).TotalMinutes;
+                var minutos = (finEfectivo - inicioEfectivo).TotalMinutes;
 
-        // DEBUG (puedes dejar unos días para probar)
-        Console.WriteLine($"Permiso temporal día {fecha:yyyy-MM-dd}: {inicioEfectivo:HH:mm} - {finEfectivo:HH:mm} = {minutos} min");
+                // DEBUG (puedes dejar unos días para probar)
+                Console.WriteLine($"Permiso temporal día {fecha:yyyy-MM-dd}: {inicioEfectivo:HH:mm} - {finEfectivo:HH:mm} = {minutos} min");
 
-        totalMinutos += minutos;
-    }
+                totalMinutos += minutos;
+            }
 
-    // Limitar por seguridad
-    if (totalMinutos < 0) totalMinutos = 0;
-    if (totalMinutos > MINUTOS_MINIMOS_JORNADA)
-        totalMinutos = MINUTOS_MINIMOS_JORNADA;
+            // Limitar por seguridad
+            if (totalMinutos < 0) totalMinutos = 0;
+            if (totalMinutos > MINUTOS_MINIMOS_JORNADA)
+                totalMinutos = MINUTOS_MINIMOS_JORNADA;
 
-    // Redondeo “normal”
-    return (int)Math.Round(totalMinutos, MidpointRounding.AwayFromZero);
-}
+            // Redondeo “normal”
+            return (int)Math.Round(totalMinutos, MidpointRounding.AwayFromZero);
+        }
 
 
     }
