@@ -2,11 +2,10 @@ using System;
 
 namespace BackendCoopSoft.DTOs.Huella;
 
-public class HuellaDTO
+public class HuellaPersonaDTO
 {
+    public int IdHuella { get; set; }
     public int IdPersona { get; set; }
-    public string NombreUsuario { get; set; } = string.Empty;
-
     public int IndiceDedo { get; set; }
-    public string? TemplateXml { get; set; }
+    public string TemplateXml { get; set; } = string.Empty;
 }

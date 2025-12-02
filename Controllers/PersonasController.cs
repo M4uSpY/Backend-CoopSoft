@@ -71,6 +71,7 @@ namespace BackendCoopSoft.Controllers
                 var huella = new HuellaDactilar
                 {
                     IdPersona = persona.IdPersona,
+                    IndiceDedo = 1,
                     Huella = personaCrearDTO.Huella
                 };
                 await _db.HuellasDactilares.AddAsync(huella);
@@ -134,7 +135,8 @@ namespace BackendCoopSoft.Controllers
             if (personaActualizarDTO.Huella != null && personaActualizarDTO.Huella.Length > 0)
             {
                 // Buscar si ya existe una huella para esa persona
-                var huella = await _db.HuellasDactilares.FirstOrDefaultAsync(h => h.IdPersona == id);
+                var huella = await _db.HuellasDactilares.FirstOrDefaultAsync(h => h.IdPersona == id && h.IndiceDedo == 1);
+
 
                 if (huella != null)
                 {
@@ -148,6 +150,7 @@ namespace BackendCoopSoft.Controllers
                     huella = new HuellaDactilar
                     {
                         IdPersona = id,
+                        IndiceDedo = 1,
                         Huella = personaActualizarDTO.Huella
                     };
                     await _db.HuellasDactilares.AddAsync(huella);

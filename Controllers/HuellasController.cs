@@ -20,16 +20,56 @@ namespace BackendCoopSoft.Controllers
             if (string.IsNullOrWhiteSpace(dto.TemplateXml))
                 return BadRequest("No puede ser nulo la huella");
 
-            var huella = new HuellaDactilar
+            if (dto.IndiceDedo is < 1 or > 2)
+                return BadRequest("El índice de dedo debe ser 1 o 2.");
+
+            // Verificar que la persona exista
+            var personaExiste = await _db.Personas
+                .AnyAsync(p => p.IdPersona == dto.IdPersona);
+
+            if (!personaExiste)
+                return NotFound("Persona no encontrada");
+
+            // Traer huellas actuales de esa persona
+            var huellasPersona = await _db.HuellasDactilares
+                .Where(h => h.IdPersona == dto.IdPersona)
+                .ToListAsync();
+
+            // Si ya tiene 2 huellas y no estamos sobreescribiendo una de ellas → error
+            if (huellasPersona.Count >= 2 &&
+                !huellasPersona.Any(h => h.IndiceDedo == dto.IndiceDedo))
             {
-                IdPersona = dto.IdPersona,
-                Huella = dto.TemplateXml
-            };
+                return BadRequest("La persona ya tiene registradas las 2 huellas permitidas.");
+            }
 
-            _db.HuellasDactilares.Add(huella);
-            await _db.SaveChangesAsync();
+            // Buscar si ya existe huella para este índice (1 o 2)
+            var huellaExistente = huellasPersona
+                .FirstOrDefault(h => h.IndiceDedo == dto.IndiceDedo);
 
-            return Ok("Huella registrada correctamente");
+            if (huellaExistente != null)
+            {
+                // Actualizar huella existente (re-enrolar)
+                huellaExistente.Huella = dto.TemplateXml;
+                _db.HuellasDactilares.Update(huellaExistente);
+                await _db.SaveChangesAsync();
+
+                return Ok($"Huella {dto.IndiceDedo} actualizada correctamente.");
+            }
+            else
+            {
+                // Crear nueva huella
+                var huella = new HuellaDactilar
+                {
+                    IdPersona = dto.IdPersona,
+                    IndiceDedo = dto.IndiceDedo,
+                    Huella = dto.TemplateXml
+                };
+
+                _db.HuellasDactilares.Add(huella);
+                await _db.SaveChangesAsync();
+
+                return Ok($"Huella {dto.IndiceDedo} registrada correctamente.");
+            }
         }
 
         // Listar todas las huellas
@@ -37,7 +77,7 @@ namespace BackendCoopSoft.Controllers
         public async Task<IActionResult> Listar()
         {
             var lista = await _db.HuellasDactilares
-                        .Where(h => h.Persona.Trabajador != null)  
+                        .Where(h => h.Persona.Trabajador != null)
                         .Select(h => new HuellaRespuesta
                         {
                             IdPersona = h.IdPersona,
@@ -49,25 +89,35 @@ namespace BackendCoopSoft.Controllers
                             CI = h.Persona.CarnetIdentidad,
                             Cargo = h.Persona.Usuario.Rol.NombreRol,
                             Foto = h.Persona.Foto,
-                            TemplateXml = h.Huella
+                            TemplateXml = h.Huella,
+                            IndiceDedo = h.IndiceDedo
                         }).ToListAsync();
 
 
             return Ok(lista);
         }
 
-        // Obtener huella de una persona
+        // Obtener huellas de una persona (las 1 o 2)
         [HttpGet("obtener/{idPersona:int}")]
         public async Task<IActionResult> Obtener(int idPersona)
         {
-            var huella = await _db.HuellasDactilares.FirstOrDefaultAsync(h => h.IdPersona == idPersona);
-            if (huella == null) return NotFound("Huella no encontrada");
+            var huellas = await _db.HuellasDactilares
+                .Where(h => h.IdPersona == idPersona)
+                .Select(h => new HuellaPersonaDTO
+                {
+                    IdHuella = h.IdHuella,
+                    IdPersona = h.IdPersona,
+                    IndiceDedo = h.IndiceDedo,
+                    TemplateXml = h.Huella
+                })
+                .ToListAsync();
 
-            return Ok(new HuellaRespuesta
-            {
-                IdPersona = huella.IdPersona,
-                TemplateXml = huella.Huella
-            });
+            if (!huellas.Any())
+                return NotFound("Huella no encontrada");
+
+            return Ok(huellas);
         }
+
+
     }
 }

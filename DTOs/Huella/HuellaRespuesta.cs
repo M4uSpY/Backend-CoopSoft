@@ -14,4 +14,6 @@ public class HuellaRespuesta
     public string Cargo { get; set; } = string.Empty;
     public byte[]? Foto { get; set; }
     public string? TemplateXml { get; set; } = string.Empty;
+
+    public int IndiceDedo { get; set; }
 }

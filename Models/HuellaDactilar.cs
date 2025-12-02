@@ -18,7 +18,11 @@ public class HuellaDactilar
 
     [Required]
     [Column("huella", TypeName = "varchar(max)")]
-    public string? Huella { get; set; }
+    public string Huella { get; set; } = string.Empty;
+    
+    [Required]
+    [Column("indice_dedo")]
+    public int IndiceDedo { get; set; }
 
     // 🔗 Propiedad de navegación
     [ForeignKey(nameof(IdPersona))]
