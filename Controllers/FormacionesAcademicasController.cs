@@ -54,6 +54,10 @@ namespace BackendCoopSoft.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            const int maxCertBytes = 2 * 1024 * 1024; // 2 MB
+            if (dto.ArchivoPdf != null && dto.ArchivoPdf.Length > maxCertBytes)
+                return BadRequest("El archivo del certificado no debe superar los 2 MB.");
+
             // validar que exista el trabajador
             var existeTrabajador = await _db.Trabajadores
                 .AnyAsync(t => t.IdTrabajador == dto.IdTrabajador);
@@ -82,6 +86,10 @@ namespace BackendCoopSoft.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            const int maxCertBytes = 2 * 1024 * 1024; // 2 MB
+            if (dto.ArchivoPdf != null && dto.ArchivoPdf.Length > maxCertBytes)
+                return BadRequest("El archivo del certificado no debe superar los 2 MB.");
 
             var formacion = await _db.FormacionesAcademicas
                 .FirstOrDefaultAsync(f => f.IdFormacion == id);

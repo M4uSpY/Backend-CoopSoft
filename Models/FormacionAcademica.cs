@@ -34,6 +34,10 @@ public class FormacionAcademica
     [Column("anio_graduacion")]
     public int AnioGraduacion { get; set; }
 
+    [Required(ErrorMessage = "El archivo pdf es requerido")]
+    [Column("archivo_pdf", TypeName = "varbinary(max)")]
+    public byte[] ArchivoPdf { get; set; } = Array.Empty<byte>();
+
     [StringLength(50)]
     [Column("nro_registro_profesional", TypeName = "varchar(50)")]
     public string? NroRegistroProfesional { get; set; }
