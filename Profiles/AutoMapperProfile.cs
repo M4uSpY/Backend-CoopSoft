@@ -69,9 +69,22 @@ public class AutoMapperProfile : Profile
         CreateMap<CapacitacionCrearDTO, Capacitacion>().ForMember(d => d.IdCapacitacion, opt => opt.Ignore());
         CreateMap<CapacitacionEditarDTO, Capacitacion>().ForMember(d => d.IdCapacitacion, opt => opt.Ignore());
 
-        CreateMap<Contrato, ContratoDTO>();
-        CreateMap<Contrato, ContratoActualizarDTO>();
-        CreateMap<ContratoActualizarDTO, Contrato>().ForMember(d => d.IdContrato, opt => opt.Ignore());
+        CreateMap<Contrato, ContratoDTO>()
+        .ForMember(d => d.IdTipoContrato, opt => opt.MapFrom(s => s.IdTipoContrato))
+        .ForMember(d => d.IdPeriodoPago, opt => opt.MapFrom(s => s.IdPeriodoPago))
+        .ForMember(d => d.ArchivoPdf, opt => opt.MapFrom(s => s.ArchivoPdf))
+        .ForMember(d => d.NombreTipoContrato, opt => opt.MapFrom(s => s.TipoContrato.ValorCategoria))
+        .ForMember(d => d.NombrePeriodoPago, opt => opt.MapFrom(s => s.PeriodoPago.ValorCategoria));
+
+
+        CreateMap<ContratoCrearDTO, Contrato>()
+            .ForMember(d => d.IdContrato, opt => opt.Ignore());
+
+        CreateMap<ContratoActualizarDTO, Contrato>()
+            .ForMember(d => d.IdContrato, opt => opt.Ignore())
+            .ForMember(d => d.IdTrabajador, opt => opt.Ignore()); // 👈 NO PISAR FK
+
+
 
 
 

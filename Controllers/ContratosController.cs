@@ -31,20 +31,22 @@ namespace BackendCoopSoft.Controllers
             var dto = _mapper.Map<List<ContratoDTO>>(contratos);
             return Ok(dto);
         }
-        [HttpGet("trabajador/ultimoContrato/{idTrabajador:int}")]
-        public async Task<ActionResult<ContratoDTO>> ObtenerUltimoContratoPorTrabajador(int idTrabajador)
+        [HttpGet("trabajador/ultimo/{idTrabajador:int}")]
+        public async Task<ActionResult<ContratoDTO>> ObtenerUltimoContrato(int idTrabajador)
         {
             var contrato = await _db.Contratos
+                .Include(c => c.TipoContrato)
+                .Include(c => c.PeriodoPago)
                 .Where(c => c.IdTrabajador == idTrabajador)
-                .OrderByDescending(c => c.FechaInicio) // o FechaFin, según tu lógica
+                .OrderByDescending(c => c.FechaInicio)
                 .FirstOrDefaultAsync();
 
-            if (contrato is null)
-                return NotFound("El trabajador no tiene contratos");
+            if (contrato == null)
+                return NotFound("El trabajador no tiene contratos.");
 
-            var contratoDTO = _mapper.Map<ContratoDTO>(contrato);
-            return Ok(contratoDTO);
+            return Ok(_mapper.Map<ContratoDTO>(contrato));
         }
+
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> ObtenerContratoPorId(int id)
@@ -59,35 +61,35 @@ namespace BackendCoopSoft.Controllers
             return Ok(dto);
         }
 
-        // [HttpPost]
-        // public async Task<IActionResult> CrearFormacion([FromBody] FormacionAcademicaCrearDTO dto)
-        // {
-        //     if (!ModelState.IsValid)
-        //         return BadRequest(ModelState);
+        [HttpPost]
+        public async Task<IActionResult> CrearContrato([FromBody] ContratoCrearDTO dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-        //     // validar que exista el trabajador
-        //     var existeTrabajador = await _db.Trabajadores
-        //         .AnyAsync(t => t.IdTrabajador == dto.IdTrabajador);
+            if (dto.ArchivoPdf == null || dto.ArchivoPdf.Length == 0)
+                return BadRequest("El archivo PDF es obligatorio.");
 
-        //     if (!existeTrabajador)
-        //         return BadRequest("El trabajador no existe");
+            // Validar trabajador
+            var existeTrabajador = await _db.Trabajadores
+                .AnyAsync(t => t.IdTrabajador == dto.IdTrabajador);
 
-        //     var formacion = _mapper.Map<FormacionAcademica>(dto);
+            if (!existeTrabajador)
+                return BadRequest("El trabajador no existe.");
 
-        //     // por seguridad, aseguramos que EF la trate como nueva (IDENTITY)
-        //     formacion.IdFormacion = 0;
+            var contrato = _mapper.Map<Contrato>(dto);
 
-        //     await _db.FormacionesAcademicas.AddAsync(formacion);
-        //     await _db.SaveChangesAsync();
+            await _db.Contratos.AddAsync(contrato);
+            await _db.SaveChangesAsync();
 
-        //     var resumen = _mapper.Map<FormacionAcademicaResumenDTO>(formacion);
+            var dtoResp = _mapper.Map<ContratoDTO>(contrato);
 
-        //     return CreatedAtAction(nameof(ObtenerFormacionPorId),
-        //         new { id = formacion.IdFormacion },
-        //         resumen);
-        // }
+            return CreatedAtAction(nameof(ObtenerContratoPorId),
+                new { id = contrato.IdContrato },
+                dtoResp);
+        }
 
-        // PUT api/formacionesacademicas/5
+
         [HttpPut("{id:int}")]
         public async Task<IActionResult> ActualizarContrato(int id, [FromBody] ContratoActualizarDTO dto)
         {
@@ -98,30 +100,34 @@ namespace BackendCoopSoft.Controllers
                 .FirstOrDefaultAsync(c => c.IdContrato == id);
 
             if (contrato is null)
-                return NotFound("Formación académica no encontrada");
-
-            if (dto.IdContrato != 0 && dto.IdContrato != id)
-                return BadRequest("El Id de la formación no coincide con la ruta");
+                return NotFound("Contrato no encontrado");
 
             _mapper.Map(dto, contrato);
+
+            // Si viene PDF → reemplazarlo
+            if (dto.ArchivoPdf != null && dto.ArchivoPdf.Length > 0)
+            {
+                contrato.ArchivoPdf = dto.ArchivoPdf;
+            }
 
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        // // DELETE api/formacionesacademicas/5
-        // [HttpDelete("{id:int}")]
-        // public async Task<IActionResult> EliminarFormacion(int id)
-        // {
-        //     var formacion = await _db.FormacionesAcademicas
-        //         .FirstOrDefaultAsync(f => f.IdFormacion == id);
+        [HttpGet("{id:int}/pdf")]
+        public async Task<IActionResult> DescargarPdf(int id)
+        {
+            var contrato = await _db.Contratos.FindAsync(id);
 
-        //     if (formacion is null)
-        //         return NotFound("Formación académica no encontrada");
+            if (contrato == null)
+                return NotFound("Contrato no encontrado.");
 
-        //     _db.FormacionesAcademicas.Remove(formacion);
-        //     await _db.SaveChangesAsync();
-        //     return NoContent();
-        // }
+            if (contrato.ArchivoPdf == null || contrato.ArchivoPdf.Length == 0)
+                return NotFound("No hay PDF registrado.");
+
+            return File(contrato.ArchivoPdf, "application/pdf", $"Contrato_{id}.pdf");
+        }
+
+
     }
 }

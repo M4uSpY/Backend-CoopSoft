@@ -2,23 +2,17 @@ using System;
 
 namespace BackendCoopSoft.DTOs.InformacionPersonal.Contratacion;
 
-public class ContratoDTO
+public class ContratoCrearDTO
 {
-    public int IdContrato { get; set; }
     public int IdTrabajador { get; set; }
-
-    public string NumeroContrato { get; set; } = string.Empty;
-
     public int IdTipoContrato { get; set; }
     public int IdPeriodoPago { get; set; }
+
+    public string NumeroContrato { get; set; } = string.Empty;
 
     public DateTime FechaInicio { get; set; }
     public DateTime FechaFin { get; set; }
 
     public byte[] ArchivoPdf { get; set; } = Array.Empty<byte>();
-
-    // OPCIONAL: si quieres mantener info para mostrar en otras vistas
-    public string? NombreTipoContrato { get; set; }
-    public string? NombrePeriodoPago { get; set; }
 }
 
