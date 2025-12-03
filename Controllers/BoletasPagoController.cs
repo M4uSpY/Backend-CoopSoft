@@ -203,7 +203,7 @@ namespace BackendCoopSoft.Controllers
         {
             QuestPDF.Settings.License = LicenseType.Community;
 
-            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img/Logo_Cooperativa.png");
+            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img/LogoCooperativaFinal.png");
             var logoBytes = System.IO.File.ReadAllBytes(logoPath);
 
             var doc = Document.Create(container =>
@@ -213,99 +213,19 @@ namespace BackendCoopSoft.Controllers
                     page.Margin(20);
                     page.Size(PageSizes.A4);
 
-                    page.Header().Row(row =>
-                    {
-                        row.ConstantItem(70)
-                            .Image(logoBytes);  // ← AQUI EL LOGO
-
-                        row.RelativeItem()
-                            .Text("PAPELETA DE PAGO")
-                            .FontSize(18)
-                            .Bold()
-                            .AlignCenter();
-                    });
-
                     page.Content().Column(col =>
                     {
-                        // ENCABEZADO (sin Grid obsoleto)
-                        col.Item().PaddingBottom(10).Row(row =>
-                        {
-                            // Columna izquierda
-                            row.RelativeItem().Column(inner =>
-                            {
-                                inner.Item().Text($"Nombre: {d.NombreCompleto}");
-                                inner.Item().Text($"Cargo: {d.Cargo}");
-                                inner.Item().Text($"Status: INDEFINIDO");
-                            });
+                        // Primera copia
+                        col.Item().Element(c => BoletaCompleta(c, d, logoBytes));
 
-                            // Columna derecha
-                            row.RelativeItem().Column(inner =>
-                            {
-                                inner.Item().Text($"Lugar: {d.Lugar}");
-                                inner.Item().Text($"Mes: {d.MesNombre}");
-                                inner.Item().Text($"Año: {d.Gestion}");
-                                inner.Item().Text($"Ingreso: {d.FechaIngreso:dd-MM-yyyy}");
-                                inner.Item().Text($"Días Trab.: {d.DiasTrabajados}");
-                            });
-                        });
+                        // Separador entre copias
+                        col.Item()
+                            .PaddingVertical(20)
+                            .LineHorizontal(1)
+                            .LineColor(Colors.Grey.Lighten2);
 
-
-                        // TABLA PRINCIPAL (Ingresos / Descuentos)
-                        col.Item().Table(table =>
-                        {
-                            table.ColumnsDefinition(columns =>
-                            {
-                                columns.ConstantColumn(160); // Concepto ingreso
-                                columns.ConstantColumn(80);  // Monto ingreso
-                                columns.ConstantColumn(30);  // separador
-                                columns.ConstantColumn(160); // Concepto descuento
-                                columns.ConstantColumn(80);  // Monto descuento
-                            });
-
-                            // ENCABEZADOS
-                            table.Header(header =>
-                            {
-                                header.Cell().AlignCenter().Text("INGRESOS").Bold();
-                                header.Cell().AlignCenter().Text("Monto").Bold();
-                                header.Cell().Text(string.Empty);
-                                header.Cell().AlignCenter().Text("DESCUENTOS").Bold();
-                                header.Cell().AlignCenter().Text("Monto").Bold();
-                            });
-
-                            void Fila(string ci, decimal mi, string cd, decimal md)
-                            {
-                                table.Cell().Text(ci);
-                                table.Cell().AlignRight().Text(mi == 0 ? "-" : mi.ToString("N2"));
-                                table.Cell().Text(string.Empty);
-                                table.Cell().Text(cd);
-                                table.Cell().AlignRight().Text(md == 0 ? "-" : md.ToString("N2"));
-                            }
-
-                            // filas
-                            Fila("Sueldo Básico:", d.SueldoBasico, "Otros Descuentos:", d.OtrosDesc);
-                            Fila("SB por días trabajados:", d.SbPorDiasTrabajados, "RC-IVA:", d.Iva);
-                            Fila("Bono Antigüedad:", d.BonoAntiguedad, "Aporte Gestora:", d.AporteGestora);
-                            Fila("Otros pagos:", d.OtrosPagos, "Aporte Provivienda:", d.AporteProvivienda);
-                            Fila("O.I. Aporte Institucional:", d.OIAporteInstitucional, "Aporte Solidario:", d.AporteSolidario);
-                            Fila("", 0m, "Otros Descuentos 6.68%:", d.OtrosDescuentos);
-
-                            // fila totales
-                            table.Cell().Text("TOTAL GANADO:").Bold();
-                            table.Cell().AlignRight().Text(d.TotalGanado.ToString("N2")).Bold();
-                            table.Cell().Text(string.Empty);
-                            table.Cell().Text("TOTAL DESCUENTOS:").Bold();
-                            table.Cell().AlignRight().Text(d.TotalDescuentos.ToString("N2")).Bold();
-                        });
-
-                        col.Item().PaddingTop(10).AlignRight()
-                            .Text($"LÍQUIDO PAGABLE: {d.LiquidoPagable:N2}")
-                            .Bold();
-
-                        col.Item().PaddingTop(30).Row(row =>
-                        {
-                            row.RelativeItem().AlignCenter().Text("Sello Cooperativa");
-                            row.RelativeItem().AlignCenter().Text("Firma del Empleado(a)\nRecibí conforme");
-                        });
+                        // Segunda copia
+                        col.Item().Element(c => BoletaCompleta(c, d, logoBytes));
                     });
                 });
             });
@@ -314,5 +234,113 @@ namespace BackendCoopSoft.Controllers
             doc.GeneratePdf(ms);
             return ms.ToArray();
         }
+
+
+        private static void BoletaCompleta(IContainer container, BoletaPagoDetalleDTO d, byte[] logoBytes)
+        {
+            container.Column(col =>
+            {
+                // ========== HEADER (logo + títulos) ==========
+                col.Item().Row(row =>
+                {
+                    row.ConstantItem(90)
+                        .Image(logoBytes);
+
+                    row.RelativeItem().Column(inner =>
+                    {
+                        inner.Item()
+                             .Text("BOLETA DE PAGO")
+                             .FontSize(18)
+                             .Bold()
+                             .AlignCenter();
+
+                        inner.Item()
+                             .PaddingTop(3)
+                             .Text("COOPERATIVA DE AHORRO Y CREDITO DE VINCULO LABORAL \"LA CONFIANZA\" R.L.  NIT: 215110027")
+                             .FontSize(9)
+                             .AlignCenter();
+                    });
+                });
+
+                // ========== CONTENIDO (tu boleta exacta) ==========
+                col.Item().Column(body =>
+                {
+                    // ENCABEZADO DATOS
+                    body.Item().PaddingBottom(10).Row(row =>
+                    {
+                        row.RelativeItem().Column(inner =>
+                        {
+                            inner.Item().Text($"Nombre: {d.NombreCompleto}");
+                            inner.Item().Text($"Cargo: {d.Cargo}");
+                            inner.Item().Text($"Status: INDEFINIDO");
+                        });
+
+                        row.RelativeItem().Column(inner =>
+                        {
+                            inner.Item().Text($"Lugar: {d.Lugar}");
+                            inner.Item().Text($"Mes: {d.MesNombre}");
+                            inner.Item().Text($"Año: {d.Gestion}");
+                            inner.Item().Text($"Ingreso: {d.FechaIngreso:dd-MM-yyyy}");
+                            inner.Item().Text($"Días Trab.: {d.DiasTrabajados}");
+                        });
+                    });
+
+                    // TABLA
+                    body.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.ConstantColumn(160);
+                            columns.ConstantColumn(80);
+                            columns.ConstantColumn(30);
+                            columns.ConstantColumn(160);
+                            columns.ConstantColumn(80);
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().AlignCenter().Text("INGRESOS").Bold();
+                            header.Cell().AlignCenter().Text("Monto").Bold();
+                            header.Cell().Text(string.Empty);
+                            header.Cell().AlignCenter().Text("DESCUENTOS").Bold();
+                            header.Cell().AlignCenter().Text("Monto").Bold();
+                        });
+
+                        void Fila(string ci, decimal mi, string cd, decimal md)
+                        {
+                            table.Cell().Text(ci);
+                            table.Cell().AlignRight().Text(mi == 0 ? "-" : mi.ToString("N2"));
+                            table.Cell().Text(string.Empty);
+                            table.Cell().Text(cd);
+                            table.Cell().AlignRight().Text(md == 0 ? "-" : md.ToString("N2"));
+                        }
+
+                        Fila("Sueldo Básico:", d.SueldoBasico, "Otros Descuentos:", d.OtrosDesc);
+                        Fila("SB por días trabajados:", d.SbPorDiasTrabajados, "RC-IVA:", d.Iva);
+                        Fila("Bono Antigüedad:", d.BonoAntiguedad, "Aporte Gestora:", d.AporteGestora);
+                        Fila("Otros pagos:", d.OtrosPagos, "Aporte Provivienda:", d.AporteProvivienda);
+                        Fila("O.I. Aporte Institucional:", d.OIAporteInstitucional, "Aporte Solidario:", d.AporteSolidario);
+                        Fila("", 0m, "Otros Descuentos 6.68%:", d.OtrosDescuentos);
+
+                        table.Cell().Text("TOTAL GANADO:").Bold();
+                        table.Cell().AlignRight().Text(d.TotalGanado.ToString("N2")).Bold();
+                        table.Cell().Text(string.Empty);
+                        table.Cell().Text("TOTAL DESCUENTOS:").Bold();
+                        table.Cell().AlignRight().Text(d.TotalDescuentos.ToString("N2")).Bold();
+                    });
+
+                    body.Item().PaddingTop(10).AlignRight()
+                        .Text($"LÍQUIDO PAGABLE: {d.LiquidoPagable:N2}")
+                        .Bold();
+
+                    body.Item().PaddingTop(30).Row(row =>
+                    {
+                        row.RelativeItem().AlignCenter().Text("Sello Cooperativa");
+                        row.RelativeItem().AlignCenter().Text("Firma del Empleado(a)\nRecibí conforme");
+                    });
+                });
+            });
+        }
+
     }
 }

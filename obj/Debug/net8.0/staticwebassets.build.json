@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "wCAYKIe6bYJkM4QAxABCekJNRf9Uu4fmxQa3UzwvAik=",
+  "Hash": "v5UT6awfVoDj03ER7MDGXIb8sPoWW3X4zsqJudxTsv0=",
   "Source": "BackendCoopSoft",
   "BasePath": "_content/BackendCoopSoft",
   "Mode": "Default",
@@ -34,6 +34,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\img\\Logo_Cooperativa.png"
+    },
+    {
+      "Identity": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\img\\LogoCooperativaFinal.png",
+      "SourceId": "BackendCoopSoft",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\",
+      "BasePath": "_content/BackendCoopSoft",
+      "RelativePath": "img/LogoCooperativaFinal.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\img\\LogoCooperativaFinal.png"
     }
   ]
 }

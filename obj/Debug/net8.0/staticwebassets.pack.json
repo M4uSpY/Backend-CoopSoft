@@ -1,6 +1,10 @@
 {
   "Files": [
     {
+      "Id": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\img\\LogoCooperativaFinal.png",
+      "PackagePath": "staticwebassets\\img\\LogoCooperativaFinal.png"
+    },
+    {
       "Id": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\img\\Logo_Cooperativa.png",
       "PackagePath": "staticwebassets\\img\\Logo_Cooperativa.png"
     },
