@@ -319,9 +319,9 @@ namespace BackendCoopSoft.Controllers
 
             // Validar que el trabajador exista
             var trabajadorExiste = await _db.Trabajadores
-                .AnyAsync(t => t.IdTrabajador == dto.IdTrabajador);
+                .FirstOrDefaultAsync(t => t.IdTrabajador == dto.IdTrabajador);
 
-            if (!trabajadorExiste)
+            if (trabajadorExiste is null)
                 return BadRequest("El trabajador indicado no existe.");
 
             var fechaInicio = dto.FechaInicio.Date;
@@ -370,6 +370,37 @@ namespace BackendCoopSoft.Controllers
                     "No se puede solicitar vacación sobre días cubiertos por licencias.");
             }
 
+
+            // 3) VALIDAR DERECHO A VACACIÓN (para bloquear incluso la solicitud) ⭐
+            var fechaRef = fechaInicio; // referencia = inicio de la vacación
+            var antiguedadAnios = CalcularAntiguedadEnAnios(trabajadorExiste.FechaIngreso, fechaRef);
+            var diasDerecho = ObtenerDiasVacacionPorAntiguedad(antiguedadAnios);
+
+            if (diasDerecho == 0)
+            {
+                return BadRequest("El trabajador aún no cumple un año de servicio, por lo que no tiene derecho a vacación.");
+            }
+
+            var gestion = fechaRef.Year;
+
+            // Días ya usados en la gestión (solo Aprobados)
+            var diasYaUsados = await CalcularDiasVacacionUsadosAsync(
+                dto.IdTrabajador,
+                gestion);
+
+            var diasSolicitud = ContarDiasHabiles(fechaInicio, fechaFin);
+
+            if (diasYaUsados + diasSolicitud > diasDerecho)
+            {
+                var disponible = diasDerecho - diasYaUsados;
+                if (disponible < 0) disponible = 0;
+
+                return BadRequest(
+                    $"No se puede registrar la solicitud. " +
+                    $"Días disponibles en la gestión: {disponible}, " +
+                    $"días solicitados: {diasSolicitud}.");
+            }
+
             var estadoPendiente = await _db.Clasificadores
                 .FirstOrDefaultAsync(c =>
                     c.Categoria == "EstadoSolicitud" &&
@@ -396,11 +427,6 @@ namespace BackendCoopSoft.Controllers
             return CreatedAtAction(nameof(ObtenerSolicitudes),
                 new { id = solicitudVacacion.IdVacacion },
                 solicitudVacacion.IdVacacion);
-        }
-        [HttpGet("ping")]
-        public string PingVacaciones()
-        {
-            return "Vacaciones v2";
         }
 
 
