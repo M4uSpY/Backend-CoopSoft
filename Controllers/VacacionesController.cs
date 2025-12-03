@@ -10,7 +10,7 @@ namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // [Authorize]
+    [Authorize]
     public class VacacionesController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -72,10 +72,48 @@ namespace BackendCoopSoft.Controllers
         [HttpGet("SolicitudesCalendario")]
         public async Task<IActionResult> ObtenerSolicitudesCalendario()
         {
-            var solicitudesVacaciones = await _db.Vacaciones
+            var rolActual = GetRolUsuarioActual();
+            if (string.IsNullOrWhiteSpace(rolActual))
+                return Forbid("No se pudo determinar el rol del usuario actual.");
+
+            var rol = rolActual.Trim();
+
+            var query = _db.Vacaciones
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Persona)
+                .Include(s => s.Trabajador)
+                    .ThenInclude(t => t.Cargo)
                 .Include(s => s.EstadoSolicitud)
+                .AsQueryable();
+
+            // Consejo → solo "Administrador General"
+            if (rol.Equals("Consejo", StringComparison.OrdinalIgnoreCase) ||
+                rol.Equals("Consejo de Administración", StringComparison.OrdinalIgnoreCase) ||
+                rol.Equals("Consejo de Administracion", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(s => s.Trabajador.Cargo.NombreCargo == CARGO_ADMIN);
+            }
+            // Administrador → solo casuales (no "Administrador General")
+            else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+                     rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(s => s.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
+            }
+            // Casual → solo sus propias solicitudes
+            else if (rol.Equals("Casual", StringComparison.OrdinalIgnoreCase))
+            {
+                var idTrabajadorActual = await GetIdTrabajadorActualAsync();
+                if (idTrabajadorActual is null)
+                    return Forbid("No se pudo determinar el trabajador asociado al usuario actual.");
+
+                query = query.Where(s => s.IdTrabajador == idTrabajadorActual.Value);
+            }
+            else
+            {
+                return Forbid("No tiene permisos para ver el calendario de vacaciones.");
+            }
+
+            var solicitudesVacaciones = await query
                 .Select(s => new SolicitudCalendarioDTO
                 {
                     IdVacacion = s.IdVacacion,
@@ -89,6 +127,7 @@ namespace BackendCoopSoft.Controllers
 
             return Ok(solicitudesVacaciones);
         }
+
 
         // ==================== LISTA PARA ADMIN/CONSEJO =====================
         [HttpGet]
@@ -120,6 +159,15 @@ namespace BackendCoopSoft.Controllers
                      rol.Equals("Admin", StringComparison.OrdinalIgnoreCase))
             {
                 query = query.Where(s => s.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
+            }
+            // Casual → solo sus propias solicitudes
+            else if (rol.Equals("Casual", StringComparison.OrdinalIgnoreCase))
+            {
+                var idTrabajadorActual = await GetIdTrabajadorActualAsync();
+                if (idTrabajadorActual is null)
+                    return Forbid("No se pudo determinar el trabajador asociado al usuario actual.");
+
+                query = query.Where(s => s.IdTrabajador == idTrabajadorActual.Value);
             }
             else
             {
@@ -616,5 +664,30 @@ namespace BackendCoopSoft.Controllers
 
             return total;
         }
+
+        private async Task<int?> GetIdTrabajadorActualAsync()
+        {
+            // ClaimTypes.Name = NombreUsuario (según tu GenerateJwtToken)
+            var username = User.Identity?.Name;
+
+            if (string.IsNullOrWhiteSpace(username))
+                return null;
+
+            // 1) Buscar el Usuario por nombre de usuario
+            var usuario = await _db.Usuarios
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.NombreUsuario == username);
+
+            if (usuario == null)
+                return null;
+
+            // 2) Buscar el Trabajador que tenga la misma Persona
+            var trabajador = await _db.Trabajadores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.IdPersona == usuario.IdPersona);
+
+            return trabajador?.IdTrabajador;
+        }
+
     }
 }

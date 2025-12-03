@@ -94,6 +94,15 @@ public class LicenciasController : ControllerBase
         {
             query = query.Where(l => l.Trabajador.Cargo.NombreCargo != CARGO_ADMIN);
         }
+        // Casual -> solo sus propias licencias
+        else if (rol.Equals("Casual", StringComparison.OrdinalIgnoreCase))
+        {
+            var idTrabajadorActual = await GetIdTrabajadorActualAsync();
+            if (idTrabajadorActual is null)
+                return Forbid("No se pudo determinar el trabajador asociado al usuario actual.");
+
+            query = query.Where(l => l.IdTrabajador == idTrabajadorActual.Value);
+        }
         else
         {
             return Forbid("No tiene permisos para ver la lista de licencias.");
@@ -740,5 +749,31 @@ public class LicenciasController : ControllerBase
         }
         return dias;
     }
+
+
+    private async Task<int?> GetIdTrabajadorActualAsync()
+    {
+        // ClaimTypes.Name = NombreUsuario (según tu GenerateJwtToken)
+        var username = User.Identity?.Name;
+
+        if (string.IsNullOrWhiteSpace(username))
+            return null;
+
+        // 1) Buscar el Usuario por nombre de usuario
+        var usuario = await _db.Usuarios
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.NombreUsuario == username);
+
+        if (usuario == null)
+            return null;
+
+        // 2) Buscar el Trabajador que tenga la misma Persona
+        var trabajador = await _db.Trabajadores
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.IdPersona == usuario.IdPersona);
+
+        return trabajador?.IdTrabajador;
+    }
+
 
 }
