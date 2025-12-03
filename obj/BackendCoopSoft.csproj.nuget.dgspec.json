@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\BackendCoopSoft.csproj": {}
+    "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj": {}
   },
   "projects": {
-    "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\BackendCoopSoft.csproj": {
+    "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\BackendCoopSoft.csproj",
+        "projectUniqueName": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
         "projectName": "BackendCoopSoft",
-        "projectPath": "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\BackendCoopSoft.csproj",
+        "projectPath": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
         "packagesPath": "C:\\Users\\darkp\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\obj\\",
+        "outputPath": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

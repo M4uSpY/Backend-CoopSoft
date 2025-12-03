@@ -28,6 +28,7 @@ namespace BackendCoopSoft.Controllers
         public async Task<IActionResult> ObtenerFaltas()
         {
             var faltas = await _db.Faltas
+                .Where(f => f.EstadoFalta)
                 .Include(f => f.Trabajador).ThenInclude(t => t.Persona)
                 .Include(f => f.TipoFalta).ToListAsync();
             var faltasDTO = _mapper.Map<List<ListarFaltasDTO>>(faltas);
@@ -80,7 +81,7 @@ namespace BackendCoopSoft.Controllers
             {
                 return NotFound("La falta no fue encontrada");
             }
-            
+
             if (falta.ArchivoJustificativo == null || falta.ArchivoJustificativo.Length == 0)
             {
                 return NotFound("La falta no tienen archivo justificativo");
@@ -100,25 +101,31 @@ namespace BackendCoopSoft.Controllers
             if (idUsuarioActual is null)
                 return Unauthorized("No se pudo identificar al usuario que modifica.");
 
-            // Registrar histórico de eliminación
+            // Estado anterior (por si quieres auditarlo)
+            var estadoAnterior = falta.EstadoFalta;
+
+            // 👉 Solo se inactiva
+            falta.EstadoFalta = false;
+
+            // Registrar histórico de "inactivación"
             var historico = new HistoricoFalta
             {
                 IdFalta = falta.IdFalta,
                 UsuarioModificoId = idUsuarioActual.Value,
                 FechaModificacion = DateTime.Now,
                 Accion = "INACTIVAR",
-                Campo = "Falta",
-                ValorAnterior = "Registrada",
-                ValorActual = "Eliminada"
+                Campo = "EstadoFalta",
+                ValorAnterior = estadoAnterior.ToString(),
+                ValorActual = falta.EstadoFalta.ToString()
             };
 
             await _db.HistoricosFalta.AddAsync(historico);
 
-            _db.Faltas.Remove(falta);
             await _db.SaveChangesAsync();
 
             return NoContent();
         }
+
 
         private int? ObtenerIdUsuarioActual()
         {

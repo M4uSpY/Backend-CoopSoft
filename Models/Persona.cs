@@ -52,6 +52,11 @@ public class Persona
     [StringLength(250)]
     public string Direccion { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Es necesario tener un estado (activo o inactivo)")]
+    [Column("estado_persona")]
+    public bool EstadoPersona { get; set; } = true;
+
+
     [Required(ErrorMessage = "Es necesario un numero de telefono")]
     [Column("telefono", TypeName = "varchar(20)")]
     [StringLength(20)]

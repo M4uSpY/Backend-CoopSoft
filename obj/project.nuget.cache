@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "FKBlCBUXoZA=",
+  "dgSpecHash": "FkhOnnMLc2A=",
   "success": true,
-  "projectFilePath": "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\BackendCoopSoft.csproj",
+  "projectFilePath": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\BackendCoopSoft.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\darkp\\.nuget\\packages\\automapper\\12.0.1\\automapper.12.0.1.nupkg.sha512",
     "C:\\Users\\darkp\\.nuget\\packages\\automapper.extensions.microsoft.dependencyinjection\\12.0.1\\automapper.extensions.microsoft.dependencyinjection.12.0.1.nupkg.sha512",

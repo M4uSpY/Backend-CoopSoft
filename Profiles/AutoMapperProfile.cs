@@ -35,10 +35,8 @@ public class AutoMapperProfile : Profile
         CreateMap<PersonaCrearDTO, Persona>().ReverseMap();
         CreateMap<Persona, PersonasListarDTO>();
 
-
-
-
-
+        CreateMap<PersonaCrearDTO, Persona>()
+            .ForMember(d => d.EstadoPersona, opt => opt.Ignore());
         CreateMap<Trabajador, TrabajadorPersonaDTO>()
             .ForMember(
                 dest => dest.TituloObtenido,
@@ -94,7 +92,7 @@ public class AutoMapperProfile : Profile
             .ForMember(dest => dest.Descripcion, opt => opt.MapFrom(src => src.Descripcion))
             .ForMember(dest => dest.TieneArchivoJustificativo, opt => opt.MapFrom(src => src.ArchivoJustificativo != null && src.ArchivoJustificativo.Length > 0));
 
-        
+
 
         CreateMap<Rol, RolDTO>();
         CreateMap<Cargo, CargoDTO>();

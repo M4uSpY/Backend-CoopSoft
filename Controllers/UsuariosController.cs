@@ -59,6 +59,7 @@ namespace BackendCoopSoft.Controllers
             usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDTO.Password);
 
             await _db.Usuarios.AddAsync(usuario);
+            await _db.SaveChangesAsync();
 
 
 

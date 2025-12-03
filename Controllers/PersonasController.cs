@@ -26,7 +26,10 @@ namespace BackendCoopSoft.Controllers
         [HttpGet]
         public async Task<IActionResult> ObtenerTodasPeronas()
         {
-            var personas = await _db.Personas.Include(p => p.Nacionalidad).ToListAsync();
+            var personas = await _db.Personas
+            .Where(p => p.EstadoPersona)
+            .Include(p => p.Nacionalidad)
+            .ToListAsync();
             var listaPersonas = _mapper.Map<List<PersonasListarDTO>>(personas);
             return Ok(listaPersonas);
         }
@@ -63,6 +66,10 @@ namespace BackendCoopSoft.Controllers
                 return BadRequest("La foto no debe superar los 2 MB.");
 
             var persona = _mapper.Map<Persona>(personaCrearDTO);
+
+            persona.EstadoPersona = true;
+
+
             await _db.Personas.AddAsync(persona);
             await _db.SaveChangesAsync();
 
@@ -268,37 +275,51 @@ namespace BackendCoopSoft.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> EliminarPersona(int id)
         {
-            var persona = await _db.Personas.FirstOrDefaultAsync(p => p.IdPersona == id);
+            var persona = await _db.Personas
+                .Include(p => p.Usuario)
+                .Include(p => p.Trabajador)
+                .FirstOrDefaultAsync(p => p.IdPersona == id);
+
             if (persona is null)
-            {
                 return NotFound("Persona no encontrada");
+
+            // 1) Si tiene usuario activo, no dejar
+            if (persona.Usuario != null && persona.Usuario.EstadoUsuario)
+            {
+                return BadRequest("No se puede inactivar la persona porque tiene un usuario activo. Inactive primero el usuario.");
+            }
+
+            // 2) Si tiene trabajador activo, tampoco
+            if (persona.Trabajador != null && persona.Trabajador.EstadoTrabajador)
+            {
+                return BadRequest("No se puede inactivar la persona porque está registrada como trabajador activo. Inactive primero al trabajador.");
             }
 
             var idUsuarioActual = ObtenerIdUsuarioActual();
             if (idUsuarioActual is null)
-            {
                 return Unauthorized("No se pudo identificar al usuario que quiere modificar.");
-            }
 
-            // Registrar histórico ANTES de borrar
+            var estadoAnterior = persona.EstadoPersona;
+            persona.EstadoPersona = false;
+
             var historico = new HistoricoPersona
             {
                 IdPersona = persona.IdPersona,
                 UsuarioModificoId = idUsuarioActual.Value,
                 FechaModificacion = DateTime.Now,
                 Accion = "INACTIVAR",
-                Campo = "Persona",
-                ValorAnterior = "Registrada",
-                ValorActual = "Eliminada"
+                Campo = "EstadoPersona",
+                ValorAnterior = estadoAnterior.ToString(),
+                ValorActual = persona.EstadoPersona.ToString()
             };
 
             await _db.HistoricosPersona.AddAsync(historico);
-
-            _db.Personas.Remove(persona);
             await _db.SaveChangesAsync();
 
             return NoContent();
         }
+
+
         [HttpGet("{id:int}/huella")]
         public async Task<IActionResult> ObtenerHuellaPersona(int id)
         {

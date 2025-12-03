@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "kCFAQ1G+JnJ46LrwiBpWWt4M+aOLl0isKCUYmLP7krA=",
+  "Hash": "wCAYKIe6bYJkM4QAxABCekJNRf9Uu4fmxQa3UzwvAik=",
   "Source": "BackendCoopSoft",
   "BasePath": "_content/BackendCoopSoft",
   "Mode": "Default",
@@ -10,17 +10,17 @@
     {
       "Name": "BackendCoopSoft\\wwwroot",
       "Source": "BackendCoopSoft",
-      "ContentRoot": "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\wwwroot\\",
+      "ContentRoot": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\",
       "BasePath": "_content/BackendCoopSoft",
       "Pattern": "**"
     }
   ],
   "Assets": [
     {
-      "Identity": "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\wwwroot\\img\\Logo_Cooperativa.png",
+      "Identity": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\img\\Logo_Cooperativa.png",
       "SourceId": "BackendCoopSoft",
       "SourceType": "Discovered",
-      "ContentRoot": "C:\\Users\\darkp\\Music\\SoftCoop\\Servidor\\Backend-CoopSoft\\wwwroot\\",
+      "ContentRoot": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\",
       "BasePath": "_content/BackendCoopSoft",
       "RelativePath": "img/Logo_Cooperativa.png",
       "AssetKind": "All",
