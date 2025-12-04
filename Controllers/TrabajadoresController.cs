@@ -27,6 +27,7 @@ namespace BackendCoopSoft.Controllers
         public async Task<IActionResult> ObtenerTrabajadores()
         {
             var trabajadores = await _db.Trabajadores
+                .Where(t => t.EstadoTrabajador)
                 .Include(t => t.Persona)
                 .ThenInclude(p => p.Nacionalidad)
                 .Include(t => t.Cargo)
@@ -125,22 +126,31 @@ namespace BackendCoopSoft.Controllers
         public async Task<IActionResult> EliminarTrabajador(int id)
         {
             var trabajador = await _db.Trabajadores
-                .Include(t => t.Horarios) // cargar horarios para eliminarlos
+                .Include(t => t.Contratos)
+                .Include(t => t.TrabajadorPlanillas)
                 .FirstOrDefaultAsync(t => t.IdTrabajador == id);
 
-            if (trabajador == null)
+            if (trabajador is null)
                 return NotFound("Trabajador no encontrado");
 
             var idUsuarioActual = ObtenerIdUsuarioActual();
             if (idUsuarioActual is null)
                 return Unauthorized("No se pudo identificar al usuario que quiere modificar.");
 
-            // Eliminar horarios asociados primero
-            if (trabajador.Horarios.Any())
-                _db.Horarios.RemoveRange(trabajador.Horarios);
+            // OPCIONAL: reglas de negocio para proteger datos históricos
+            if (trabajador.Contratos != null && trabajador.Contratos.Any())
+            {
+                return BadRequest("No se puede inactivar el trabajador porque tiene contratos registrados.");
+            }
 
-            // Eliminar trabajador
-            _db.Trabajadores.Remove(trabajador);
+            if (trabajador.TrabajadorPlanillas != null && trabajador.TrabajadorPlanillas.Any())
+            {
+                return BadRequest("No se puede inactivar el trabajador porque está asociado a planillas.");
+            }
+
+            // Soft delete
+            var estadoAnterior = trabajador.EstadoTrabajador;
+            trabajador.EstadoTrabajador = false;
 
             var historico = new HistoricoTrabajador
             {
@@ -148,22 +158,17 @@ namespace BackendCoopSoft.Controllers
                 UsuarioModificoId = idUsuarioActual.Value,
                 FechaModificacion = DateTime.Now,
                 Accion = "INACTIVAR",
-                Campo = "Trabajador",
-                ValorAnterior = "Registrado",
-                ValorActual = "Eliminado"
+                Campo = "EstadoTrabajador",
+                ValorAnterior = estadoAnterior.ToString(),
+                ValorActual = trabajador.EstadoTrabajador.ToString()
             };
 
             await _db.HistoricosTrabajador.AddAsync(historico);
-
-            if (trabajador.Horarios.Any())
-                _db.Horarios.RemoveRange(trabajador.Horarios);
-
-            _db.Trabajadores.Remove(trabajador);
-
             await _db.SaveChangesAsync();
 
-            return Ok("Trabajador eliminado correctamente");
+            return Ok("Trabajador inactivado correctamente");
         }
+
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> ActualizarTrabajador(int id, TrabajadorCrearDTO trabajadorActualizarDTO)
