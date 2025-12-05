@@ -1,0 +1,29 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\img\\LogoCooperativaFinal.png",
+      "PackagePath": "staticwebassets\\img\\LogoCooperativaFinal.png"
+    },
+    {
+      "Id": "C:\\Users\\darkp\\Music\\SoftCoop\\Backend\\Backend-CoopSoft\\wwwroot\\img\\Logo_Cooperativa.png",
+      "PackagePath": "staticwebassets\\img\\Logo_Cooperativa.png"
+    },
+    {
+      "Id": "obj\\Release\\net8.0\\staticwebassets\\msbuild.BackendCoopSoft.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Release\\net8.0\\staticwebassets\\msbuild.build.BackendCoopSoft.props",
+      "PackagePath": "build\\BackendCoopSoft.props"
+    },
+    {
+      "Id": "obj\\Release\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.BackendCoopSoft.props",
+      "PackagePath": "buildMultiTargeting\\BackendCoopSoft.props"
+    },
+    {
+      "Id": "obj\\Release\\net8.0\\staticwebassets\\msbuild.buildTransitive.BackendCoopSoft.props",
+      "PackagePath": "buildTransitive\\BackendCoopSoft.props"
+    }
+  ],
+  "ElementsToRemove": []
+}
