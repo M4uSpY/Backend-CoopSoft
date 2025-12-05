@@ -17,6 +17,8 @@ namespace BackendCoopSoft.Controllers
     public class FaltasController : ControllerBase
     {
         private readonly AppDbContext _db;
+
+
         private readonly IMapper _mapper;
         public FaltasController(AppDbContext db, IMapper mapper)
         {

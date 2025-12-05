@@ -120,12 +120,9 @@ namespace BackendCoopSoft.Controllers
         }
 
 
-        [AllowAnonymous]
         [HttpGet("obtener/{idPersona:int}")]
         public async Task<IActionResult> Obtener(int idPersona)
         {
-            if (!EsMarcadorValido())
-                return Unauthorized("Marcador no autorizado.");
 
             var huellas = await _db.HuellasDactilares
                 .Where(h => h.IdPersona == idPersona)

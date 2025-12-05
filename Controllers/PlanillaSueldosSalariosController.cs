@@ -24,7 +24,12 @@ namespace BackendCoopSoft.Controllers
         // BASE para el bono de antigüedad = 3 x SMN
         private const decimal BASE_BONO_ANT = SMN_2025 * 3m; // 8250 Bs
 
-        private const decimal UMBRAL_RC_IVA = 8000m;
+        private const string CATEGORIA_TIPO_FALTA = "TipoFalta";
+
+        private const int DIAS_MES_PLANILLA = 30;
+        private const int HORAS_POR_DIA = 8;
+
+        private const string VALOR_INASISTENCIA_LABORAL = "Inasistencia laboral";
 
         public PlanillaSueldosSalariosController(AppDbContext db)
         {
@@ -129,14 +134,11 @@ namespace BackendCoopSoft.Controllers
                 if (existentes.Any(e => e.IdTrabajador == t.IdTrabajador))
                     continue;
 
-                // DÍAS PAGADOS = Asistencia (entrada+salida) + Vacación aprobada + Licencia aprobada
-                int diasPagados = await CalcularDiasPagadosAsync(
-                    t.IdTrabajador,
-                    planilla.PeriodoDesde,
-                    planilla.PeriodoHasta);
 
                 // Antigüedad en meses (si quieres seguir guardando este campo)
                 int antigMeses = CalcularMesesAntiguedad(t.FechaIngreso, planilla.PeriodoHasta);
+
+                var diasIniciales = DIAS_MES_PLANILLA;
 
                 var fila = new TrabajadorPlanilla
                 {
@@ -150,8 +152,8 @@ namespace BackendCoopSoft.Controllers
                     NombreCargoMes = t.Cargo.NombreCargo,
                     HaberBasicoMes = t.HaberBasico,
 
-                    DiasTrabajados = diasPagados,
-                    HorasTrabajadas = diasPagados * 8,
+                    DiasTrabajados = diasIniciales,
+                    HorasTrabajadas = diasIniciales * HORAS_POR_DIA,
 
                     AntiguedadMeses = antigMeses
                 };
@@ -209,90 +211,6 @@ namespace BackendCoopSoft.Controllers
             return 0.50m;                  // más de 25
         }
 
-        // DÍAS PAGADOS: jornada completa o vacación aprobada o licencia aprobada
-        private async Task<int> CalcularDiasPagadosAsync(int idTrabajador, DateTime desde, DateTime hasta)
-        {
-            var inicio = desde.Date;
-            var fin = hasta.Date;
-
-            // Asistencias en el periodo
-            var asistencias = await _db.Asistencias
-                .Where(a => a.IdTrabajador == idTrabajador
-                            && a.Fecha >= inicio
-                            && a.Fecha <= fin)
-                .ToListAsync();
-
-            // Vacaciones aprobadas
-            var vacaciones = await _db.Vacaciones
-                .Include(s => s.EstadoSolicitud)
-                .Where(s => s.IdTrabajador == idTrabajador
-                            && s.EstadoSolicitud.Categoria == "EstadoSolicitud"
-                            && s.EstadoSolicitud.ValorCategoria == "Aprobado"
-                            && s.FechaFin >= inicio
-                            && s.FechaInicio <= fin)
-                .ToListAsync();
-
-            // Licencias aprobadas
-            var licencias = await _db.Licencias
-                .Include(l => l.EstadoLicencia)
-                .Include(l => l.TipoLicencia)
-                .Where(l => l.IdTrabajador == idTrabajador
-                            && l.EstadoLicencia.Categoria == "EstadoSolicitud"
-                            && l.EstadoLicencia.ValorCategoria == "Aprobado"
-                            && l.FechaFin >= inicio
-                            && l.FechaInicio <= fin)
-                .ToListAsync();
-
-            int diasPagados = 0;
-
-            for (var fecha = inicio; fecha <= fin; fecha = fecha.AddDays(1))
-            {
-                // 👉 Solo contar LUNES–VIERNES
-                if (fecha.DayOfWeek == DayOfWeek.Saturday ||
-                    fecha.DayOfWeek == DayOfWeek.Sunday)
-                    continue;
-
-                // Jornada completa: tiene entrada y salida
-                bool tieneEntrada = asistencias.Any(a => a.Fecha == fecha && a.EsEntrada);
-                bool tieneSalida = asistencias.Any(a => a.Fecha == fecha && !a.EsEntrada);
-                bool jornadaCompleta = tieneEntrada && tieneSalida;
-
-                // Día de vacación (aprobada)
-                bool diaEnVacacion = vacaciones.Any(v =>
-                    v.FechaInicio.Date <= fecha && v.FechaFin.Date >= fecha);
-
-                // Todas las licencias que cubren este día
-                var licenciasDia = licencias
-                    .Where(l => l.FechaInicio.Date <= fecha && l.FechaFin.Date >= fecha)
-                    .ToList();
-
-                // 👇 Ajusta este string al ValorCategoria real de tu TipoLicencia para permiso temporal
-                const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
-
-                // ¿Hay licencias que NO sean permiso temporal? (maternidad, enfermedad, etc.)
-                bool diaConLicenciaNoTemporal = licenciasDia.Any(l =>
-                    l.TipoLicencia != null &&
-                    !string.Equals(l.TipoLicencia.ValorCategoria, TIPO_PERMISO_TEMPORAL, StringComparison.OrdinalIgnoreCase));
-
-                // ¿Hay permiso temporal este día?
-                bool diaConPermisoTemporal = licenciasDia.Any(l =>
-                    l.TipoLicencia != null &&
-                    string.Equals(l.TipoLicencia.ValorCategoria, TIPO_PERMISO_TEMPORAL, StringComparison.OrdinalIgnoreCase));
-
-                // Regla mejorada:
-                // - Licencias NO temporales → cuentan como día pagado aunque no haya asistencias.
-                // - Permiso temporal → solo cuenta como día pagado si hubo jornada trabajada (entrada+salida).
-                bool diaEnLicenciaQueCuentaComoTrabajada =
-                    diaConLicenciaNoTemporal ||
-                    (diaConPermisoTemporal && jornadaCompleta);
-
-                if (jornadaCompleta || diaEnVacacion || diaEnLicenciaQueCuentaComoTrabajada)
-                    diasPagados++;
-            }
-
-
-            return diasPagados;
-        }
 
         // ==========================================
         // 3) CALCULAR PLANILLA
@@ -316,17 +234,56 @@ namespace BackendCoopSoft.Controllers
             if (!planilla.TrabajadorPlanillas.Any())
                 return BadRequest("No hay trabajadores en esta planilla. Primero ejecuta /generar-trabajadores.");
 
+            var idTipoInasistenciaLaboral = await _db.Clasificadores
+                .Where(c => c.Categoria == CATEGORIA_TIPO_FALTA &&
+                            c.ValorCategoria == VALOR_INASISTENCIA_LABORAL)
+                .Select(c => c.IdClasificador)
+                .FirstOrDefaultAsync();
+
+            bool puedeDescontarInasistencias = idTipoInasistenciaLaboral != 0;
+
             var conceptos = await _db.Conceptos.ToDictionaryAsync(c => c.Codigo);
+
+            // 👉 Traemos una sola vez las faltas de inasistencia ACTIVAS en el periodo
+            List<Falta> faltasInasistenciaActivas = new();
+            if (puedeDescontarInasistencias)
+            {
+                faltasInasistenciaActivas = await _db.Faltas
+                    .Where(f =>
+                        f.IdTipoFalta == idTipoInasistenciaLaboral &&
+                        f.EstadoFalta &&
+                        f.Fecha.Date >= planilla.PeriodoDesde.Date &&
+                        f.Fecha.Date <= planilla.PeriodoHasta.Date)
+                    .ToListAsync();
+            }
 
             foreach (var tp in planilla.TrabajadorPlanillas)
             {
-                var diasRecalculados = await CalcularDiasPagadosAsync(
-                                                tp.IdTrabajador,
-                                                planilla.PeriodoDesde,
-                                                planilla.PeriodoHasta);
+                // ==========================================
+                // a) Base = 30 días
+                // ==========================================
+                int diasTrabajados = DIAS_MES_PLANILLA;
 
-                tp.DiasTrabajados = diasRecalculados;
-                tp.HorasTrabajadas = diasRecalculados * 8;
+                if (puedeDescontarInasistencias)
+                {
+                    // Días con falta de inasistencia activa para este trabajador
+                    var diasConFaltaActiva = faltasInasistenciaActivas
+                        .Where(f => f.IdTrabajador == tp.IdTrabajador)
+                        .Select(f => f.Fecha.Date)
+                        .Distinct()
+                        .Count();
+
+                    diasTrabajados = DIAS_MES_PLANILLA - diasConFaltaActiva;
+                    if (diasTrabajados < 0)
+                        diasTrabajados = 0;
+                }
+
+                tp.DiasTrabajados = diasTrabajados;
+                tp.HorasTrabajadas = diasTrabajados * HORAS_POR_DIA;
+
+                // ==========================================
+                // LIMPIEZA DE VALORES AUTOMÁTICOS
+                // ==========================================
                 var manuales = tp.TrabajadorPlanillaValors
                     .Where(v => v.EsManual)
                     .ToList();
@@ -358,26 +315,17 @@ namespace BackendCoopSoft.Controllers
                 }
 
                 // ========= INGRESOS =========
-                // 1) Calcular HABER BÁSICO PRORRATEADO según días pagados
-
-                // días del periodo de la planilla
-                var diasPeriodo = (planilla.PeriodoHasta.Date - planilla.PeriodoDesde.Date).Days + 1;
-                // si por alguna razón viene mal, asumimos 30 días
-                if (diasPeriodo <= 0)
-                    diasPeriodo = 30;
-
-                // días pagados que calculaste en GenerarTrabajadores
+                // 👉 Divisor normativo fijo: 30 días
+                var diasPeriodo = DIAS_MES_PLANILLA;
                 var diasPagados = tp.DiasTrabajados;
-                // por seguridad, no exceder el periodo
                 if (diasPagados > diasPeriodo)
                     diasPagados = diasPeriodo;
 
-                // sueldo mensual completo
                 var haberBasicoMensual = tp.HaberBasicoMes;
 
-                // HABER BÁSICO GANADO = sueldo mensual / días del periodo * días pagados
+                // HABER BÁSICO GANADO = HB / 30 * días pagados
                 var haberBasico = Math.Round(
-                    (diasPeriodo > 0 ? (haberBasicoMensual / diasPeriodo * diasPagados) : 0m),
+                    diasPeriodo > 0 ? (haberBasicoMensual / diasPeriodo * diasPagados) : 0m,
                     2);
 
                 if (conceptos.ContainsKey("HABER_BASICO"))
@@ -386,8 +334,7 @@ namespace BackendCoopSoft.Controllers
                     totalIngresos += haberBasico;
                 }
 
-
-                // BONO DE ANTIGÜEDAD = 3 x SMN x porcentaje(según años)
+                // BONO DE ANTIGÜEDAD = 3 x SMN x % según años
                 decimal bonoAnt = 0m;
                 if (conceptos.ContainsKey("BONO_ANT"))
                 {
@@ -408,8 +355,7 @@ namespace BackendCoopSoft.Controllers
                 //     .Sum(m => m.Valor);
                 // totalIngresos += bonoProdManual;
 
-                // APORTE COOP 3.34% (sobre Haber Básico)
-                // APORTE COOP 3.34% (sobre HABER BÁSICO GANADO)
+                // APORTE COOP 3.34% sobre HABER BÁSICO GANADO
                 decimal apCoop = 0m;
                 if (conceptos.ContainsKey("AP_COOP_334"))
                 {
@@ -417,7 +363,6 @@ namespace BackendCoopSoft.Controllers
                     Add("AP_COOP_334", apCoop);
                     totalIngresos += apCoop;
                 }
-
 
                 var totalGanado = totalIngresos;
 
@@ -431,7 +376,7 @@ namespace BackendCoopSoft.Controllers
                     totalDescuentos += gestora;
                 }
 
-                // RC-IVA: siempre manual
+                // RC-IVA: siempre manual (no se recalcula aquí)
                 // decimal rcIvaManual = manuales
                 //     .Where(m => m.Concepto.Codigo == "RC_IVA_13")
                 //     .Sum(m => m.Valor);
@@ -446,7 +391,7 @@ namespace BackendCoopSoft.Controllers
                     totalDescuentos += apSol;
                 }
 
-                // OTROS DESC. 6.68% sobre TOTAL GANADO (por ejemplo CPS)
+                // OTROS DESC. 6.68% (por ejemplo CPS) = 2 * apCoop, como lo tenías
                 decimal otros668 = 0m;
                 if (conceptos.ContainsKey("OTROS_DESC_668"))
                 {
@@ -455,19 +400,14 @@ namespace BackendCoopSoft.Controllers
                     totalDescuentos += otros668;
                 }
 
-                // OTROS DESC. manuales
-                // decimal otrosDescManual = manuales
-                //     .Where(m => m.Concepto.Codigo == "OTROS_DESC")
-                //     .Sum(m => m.Valor);
-                // totalDescuentos += otrosDescManual;
-
-                // Aseguramos que los manuales sigan vinculados al contexto
+                // Mantener manuales adjuntos al contexto
                 foreach (var m in manuales)
                 {
                     if (_db.Entry(m).State == EntityState.Detached)
                         _db.TrabajadorPlanillaValores.Attach(m);
                 }
             }
+
             var idUsuarioActual = ObtenerIdUsuarioActual();
             if (idUsuarioActual != null)
             {
@@ -488,6 +428,10 @@ namespace BackendCoopSoft.Controllers
             await _db.SaveChangesAsync();
             return Ok("Planilla calculada correctamente para Sueldos y Salarios.");
         }
+
+
+
+
         [HttpPut("trabajador-planilla/{idTrabajadorPlanilla:int}/rc-iva")]
         public async Task<IActionResult> ActualizarRcIva(int idTrabajadorPlanilla, [FromBody] RcIvaActualizarDTO dto)
         {
