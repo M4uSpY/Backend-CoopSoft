@@ -241,6 +241,11 @@ namespace BackendCoopSoft.Controllers
 
             for (var fecha = inicio; fecha <= fin; fecha = fecha.AddDays(1))
             {
+                // 👉 Solo contar LUNES–VIERNES
+                if (fecha.DayOfWeek == DayOfWeek.Saturday ||
+                    fecha.DayOfWeek == DayOfWeek.Sunday)
+                    continue;
+
                 // Jornada completa: tiene entrada y salida
                 bool tieneEntrada = asistencias.Any(a => a.Fecha == fecha && a.EsEntrada);
                 bool tieneSalida = asistencias.Any(a => a.Fecha == fecha && !a.EsEntrada);
@@ -256,7 +261,7 @@ namespace BackendCoopSoft.Controllers
                     .ToList();
 
                 // 👇 Ajusta este string al ValorCategoria real de tu TipoLicencia para permiso temporal
-                const string TIPO_PERMISO_TEMPORAL = "Permiso Temporal";
+                const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
 
                 // ¿Hay licencias que NO sean permiso temporal? (maternidad, enfermedad, etc.)
                 bool diaConLicenciaNoTemporal = licenciasDia.Any(l =>
