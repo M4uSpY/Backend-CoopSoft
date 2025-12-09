@@ -2,6 +2,7 @@ using AutoMapper;
 using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs.InformacionPersonal.FormacionAcademica.Capacitaciones;
 using BackendCoopSoft.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize(Roles = "Administrador,Casual")]
     [ApiController]
     public class CapacitacionesController : ControllerBase
     {

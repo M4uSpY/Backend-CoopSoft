@@ -34,7 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<HistoricoTrabajador> HistoricosTrabajador => Set<HistoricoTrabajador>();
     public DbSet<HistoricoPersona> HistoricosPersona => Set<HistoricoPersona>();
     public DbSet<HistoricoTrabajadorPlanilla> HistoricosTrabajadorPlanilla => Set<HistoricoTrabajadorPlanilla>();
-    public DbSet<HistoricoPlanilla> HistoricoPlanilla => Set<HistoricoPlanilla>();
+    public DbSet<HistoricoPlanilla> HistoricosPlanilla => Set<HistoricoPlanilla>();
 
     public DbSet<Planilla> Planillas => Set<Planilla>();
     public DbSet<Concepto> Conceptos => Set<Concepto>();

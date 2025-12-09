@@ -1,10 +1,12 @@
 using BackendCoopSoft.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
     public class GenerosController : ControllerBase
     {

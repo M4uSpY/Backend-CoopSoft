@@ -3,11 +3,17 @@ using BackendCoopSoft.DTOs.Planillas;
 using BackendCoopSoft.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
+using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
+
 
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Administrador,Consejo")]
     public class PlanillaSueldosSalariosController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -462,15 +468,35 @@ namespace BackendCoopSoft.Controllers
                         _db.TrabajadorPlanillaValores.Attach(m);
                 }
             }
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual != null)
+            {
+                var historico = new HistoricoPlanilla
+                {
+                    IdPlanilla = planilla.IdPlanilla,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "RECALCULAR",
+                    Campo = "CALCULO_AUTOMATICO",
+                    ValorAnterior = null,
+                    ValorActual = "Planilla de sueldos y salarios recalculada."
+                };
+
+                await _db.HistoricosPlanilla.AddAsync(historico);
+            }
 
             await _db.SaveChangesAsync();
             return Ok("Planilla calculada correctamente para Sueldos y Salarios.");
         }
         [HttpPut("trabajador-planilla/{idTrabajadorPlanilla:int}/rc-iva")]
-        public async Task<IActionResult> ActualizarRcIva(int idTrabajadorPlanilla,[FromBody] RcIvaActualizarDTO dto)
+        public async Task<IActionResult> ActualizarRcIva(int idTrabajadorPlanilla, [FromBody] RcIvaActualizarDTO dto)
         {
             if (dto == null)
                 return BadRequest("Datos inválidos.");
+
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual is null)
+                return Unauthorized("No se pudo identificar al usuario que realiza la modificación.");
 
             // 1) Buscar la fila de TrabajadorPlanilla
             var tp = await _db.TrabajadorPlanillas
@@ -497,6 +523,10 @@ namespace BackendCoopSoft.Controllers
 
             var monto = Math.Round(dto.MontoRcIva, 2);
 
+            // ------- para histórico --------
+            decimal valorAnterior = existente?.Valor ?? 0m;
+            decimal valorNuevo;
+
             if (existente == null)
             {
                 if (monto <= 0)
@@ -514,6 +544,7 @@ namespace BackendCoopSoft.Controllers
                     EsManual = true
                 };
                 _db.TrabajadorPlanillaValores.Add(nuevo);
+                valorNuevo = monto;
             }
             else
             {
@@ -524,22 +555,48 @@ namespace BackendCoopSoft.Controllers
 
                     // O dejar el registro y ponerlo en 0:
                     existente.Valor = 0m;
+                    valorNuevo = 0m;
                 }
                 else
                 {
                     existente.Valor = monto;
+                    valorNuevo = monto;
                 }
+            }
+
+            // Si hubo cambio real, registramos en el histórico
+            if (valorAnterior != valorNuevo)
+            {
+                var historico = new HistoricoTrabajadorPlanilla
+                {
+                    IdTrabajadorPlanilla = tp.IdTrabajadorPlanilla,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "RC_IVA_13",
+                    ValorAnterior = valorAnterior.ToString(CultureInfo.InvariantCulture),
+                    ValorActual = valorNuevo.ToString(CultureInfo.InvariantCulture)
+                };
+
+                await _db.HistoricosTrabajadorPlanilla.AddAsync(historico);
             }
 
             await _db.SaveChangesAsync();
             return Ok("RC-IVA actualizado correctamente (valor manual).");
         }
 
+
+
         [HttpPut("trabajador-planilla/{idTrabajadorPlanilla:int}/otros-desc")]
-        public async Task<IActionResult> ActualizarOtrosDesc(int idTrabajadorPlanilla,[FromBody] OtrosDescActualizarDTO dto)
+        public async Task<IActionResult> ActualizarOtrosDesc(int idTrabajadorPlanilla, [FromBody] OtrosDescActualizarDTO dto)
         {
             if (dto == null)
                 return BadRequest("Datos inválidos.");
+
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual is null)
+                return Unauthorized("No se pudo identificar al usuario que realiza la modificación.");
+
 
             // 1) Buscar la fila de TrabajadorPlanilla
             var tp = await _db.TrabajadorPlanillas
@@ -566,6 +623,10 @@ namespace BackendCoopSoft.Controllers
 
             var monto = Math.Round(dto.MontoOtrosDesc, 2);
 
+            // ------- para histórico --------
+            decimal valorAnterior = existente?.Valor ?? 0m;
+            decimal valorNuevo;
+
             if (existente == null)
             {
                 if (monto <= 0)
@@ -583,6 +644,7 @@ namespace BackendCoopSoft.Controllers
                     EsManual = true
                 };
                 _db.TrabajadorPlanillaValores.Add(nuevo);
+                valorNuevo = monto;
             }
             else
             {
@@ -591,11 +653,29 @@ namespace BackendCoopSoft.Controllers
                     // Igual que en RC-IVA: puedes eliminar o dejar en 0, aquí lo dejo en 0
                     // _db.TrabajadorPlanillaValores.Remove(existente);
                     existente.Valor = 0m;
+                    valorNuevo = 0m;
                 }
                 else
                 {
                     existente.Valor = monto;
+                    valorNuevo = monto;
                 }
+            }
+
+            if (valorAnterior != valorNuevo)
+            {
+                var historico = new HistoricoTrabajadorPlanilla
+                {
+                    IdTrabajadorPlanilla = tp.IdTrabajadorPlanilla,
+                    UsuarioModificoId = idUsuarioActual.Value,
+                    FechaModificacion = DateTime.Now,
+                    Accion = "ACTUALIZAR",
+                    Campo = "OTROS_DESC",
+                    ValorAnterior = valorAnterior.ToString(CultureInfo.InvariantCulture),
+                    ValorActual = valorNuevo.ToString(CultureInfo.InvariantCulture)
+                };
+
+                await _db.HistoricosTrabajadorPlanilla.AddAsync(historico);
             }
 
             await _db.SaveChangesAsync();
@@ -709,8 +789,27 @@ namespace BackendCoopSoft.Controllers
             if (planilla.EstaCerrada)
                 return BadRequest("La planilla ya estaba cerrada.");
 
+            var idUsuarioActual = ObtenerIdUsuarioActual();
+            if (idUsuarioActual is null)
+                return Unauthorized("No se pudo identificar al usuario que realiza la operación.");
+
+            var estadoAnterior = planilla.EstaCerrada;
+
             planilla.EstaCerrada = true;
             planilla.FechaCierre = DateTime.Now.Date;
+
+            var historico = new HistoricoPlanilla
+            {
+                IdPlanilla = planilla.IdPlanilla,
+                UsuarioModificoId = idUsuarioActual.Value,
+                FechaModificacion = DateTime.Now,
+                Accion = "CERRAR",
+                Campo = "EstaCerrada / FechaCierre",
+                ValorAnterior = $"EstaCerrada={estadoAnterior}",
+                ValorActual = $"EstaCerrada={planilla.EstaCerrada}; FechaCierre={planilla.FechaCierre:yyyy-MM-dd}"
+            };
+
+            await _db.HistoricosPlanilla.AddAsync(historico);
 
             await _db.SaveChangesAsync();
             return Ok("Planilla cerrada correctamente.");
@@ -741,5 +840,25 @@ namespace BackendCoopSoft.Controllers
 
             return Ok(dto);
         }
+
+
+        private int? ObtenerIdUsuarioActual()
+        {
+            // 1) Intentar encontrar el claim "sub"
+            var claimSub = User.FindFirst(JwtRegisteredClaimNames.Sub);
+
+            // 2) Si no está, intentar con NameIdentifier
+            var claimNameId = User.FindFirst(ClaimTypes.NameIdentifier);
+
+            var claim = claimSub ?? claimNameId;
+
+            if (claim is null)
+                return null;
+
+            return int.TryParse(claim.Value, out var idUsuario)
+                ? idUsuario
+                : (int?)null;
+        }
+
     }
 }

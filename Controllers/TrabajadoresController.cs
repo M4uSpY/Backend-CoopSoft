@@ -4,12 +4,14 @@ using AutoMapper;
 using BackendCoopSoft.Data;
 using BackendCoopSoft.DTOs.Trabajadores;
 using BackendCoopSoft.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BackendCoopSoft.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
     public class TrabajadoresController : ControllerBase
     {
