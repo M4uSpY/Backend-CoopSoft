@@ -75,6 +75,7 @@ namespace BackendCoopSoft.Controllers
         }
 
         // Listar todas las huellas
+        [AllowAnonymous]
         [HttpGet("listar")]
         public async Task<IActionResult> Listar()
         {
@@ -89,7 +90,7 @@ namespace BackendCoopSoft.Controllers
                             ApellidoPaterno = h.Persona.ApellidoPaterno,
                             ApellidoMaterno = h.Persona.ApellidoMaterno,
                             CI = h.Persona.CarnetIdentidad,
-                            Cargo = h.Persona.Usuario.Rol.NombreRol,
+                            Cargo = h.Persona.Trabajador.Cargo.NombreCargo,
                             Foto = h.Persona.Foto,
                             TemplateXml = h.Huella,
                             IndiceDedo = h.IndiceDedo
@@ -99,6 +100,7 @@ namespace BackendCoopSoft.Controllers
             return Ok(lista);
         }
 
+        [AllowAnonymous]
         // Obtener huellas de una persona (las 1 o 2)
         [HttpGet("obtener/{idPersona:int}")]
         public async Task<IActionResult> Obtener(int idPersona)
