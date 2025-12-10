@@ -3,6 +3,7 @@ using BackendCoopSoft.DTOs.Huella;
 using BackendCoopSoft.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 
 namespace BackendCoopSoft.Controllers
@@ -13,7 +14,22 @@ namespace BackendCoopSoft.Controllers
     public class HuellasController : ControllerBase
     {
         private readonly AppDbContext _db;
-        public HuellasController(AppDbContext db) => _db = db;
+        private readonly string _marcadorApiKey;
+
+
+        public HuellasController(AppDbContext db, IConfiguration configuration)
+        {
+            _db = db;
+            _marcadorApiKey = configuration["Marcador:ApiKey"] ?? string.Empty;
+        }
+
+        private bool EsMarcadorValido()
+        {
+            if (!Request.Headers.TryGetValue("X-Marcador-Key", out var headerValue))
+                return false;
+
+            return string.Equals(headerValue.ToString(), _marcadorApiKey, StringComparison.Ordinal);
+        }
 
         // Guardar huella
         [HttpPost("registrar")]
@@ -79,6 +95,9 @@ namespace BackendCoopSoft.Controllers
         [HttpGet("listar")]
         public async Task<IActionResult> Listar()
         {
+            if (!EsMarcadorValido())
+                return Unauthorized("Marcador no autorizado.");
+
             var lista = await _db.HuellasDactilares
                         .Where(h => h.Persona.Trabajador != null)
                         .Select(h => new HuellaRespuesta
@@ -100,11 +119,14 @@ namespace BackendCoopSoft.Controllers
             return Ok(lista);
         }
 
+
         [AllowAnonymous]
-        // Obtener huellas de una persona (las 1 o 2)
         [HttpGet("obtener/{idPersona:int}")]
         public async Task<IActionResult> Obtener(int idPersona)
         {
+            if (!EsMarcadorValido())
+                return Unauthorized("Marcador no autorizado.");
+
             var huellas = await _db.HuellasDactilares
                 .Where(h => h.IdPersona == idPersona)
                 .Select(h => new HuellaPersonaDTO
