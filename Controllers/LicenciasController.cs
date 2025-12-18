@@ -610,6 +610,14 @@ public class LicenciasController : ControllerBase
         if (licencia is null)
             return NotFound("Licencia no encontrada.");
 
+        var estadoActual = licencia.EstadoLicencia?.ValorCategoria ?? string.Empty;
+
+        if (estadoActual.Equals("Rechazado", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("La licencia ya fue rechazada y no puede aprobarse.");
+
+        if (estadoActual.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("La licencia ya está aprobada.");
+
         var cargoTrabajador = licencia.Trabajador?.Cargo?.NombreCargo;
 
         if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
@@ -641,10 +649,19 @@ public class LicenciasController : ControllerBase
         var licencia = await _db.Licencias
             .Include(l => l.Trabajador)
                 .ThenInclude(t => t.Cargo)
+            .Include(l => l.EstadoLicencia)
             .FirstOrDefaultAsync(l => l.IdLicencia == id);
 
         if (licencia is null)
             return NotFound("Licencia no encontrada.");
+
+        var estadoActual = licencia.EstadoLicencia?.ValorCategoria ?? string.Empty;
+
+        if (estadoActual.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("La licencia ya fue aprobada y no puede rechazarse.");
+
+        if (estadoActual.Equals("Rechazado", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("La licencia ya está rechazada.");
 
         var cargoTrabajador = licencia.Trabajador?.Cargo?.NombreCargo;
 

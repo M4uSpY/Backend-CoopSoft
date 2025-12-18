@@ -52,19 +52,6 @@ namespace BackendCoopSoft.Controllers
             var fechaHoraMarcacion = dto.Fecha.Date + dto.Hora;
 
             // =========================================================
-            // 0) LICENCIAS APROBADAS
-            // =========================================================
-            if (await TrabajadorEnLicenciaAsync(dto.IdTrabajador, fechaHoraMarcacion))
-            {
-                return Ok(new AsistenciaRegistrarResultadoDTO
-                {
-                    Registrado = false,
-                    TipoMarcacion = "EN_PROCESO",
-                    Mensaje = "No es posible registrar asistencia porque el trabajador se encuentra con una licencia autorizada en este horario."
-                });
-            }
-
-            // =========================================================
             // 1) VACACIONES / PERMISOS APROBADOS (Solicitud)
             // =========================================================
             var vacacionHoy = await _db.Vacaciones
@@ -132,6 +119,24 @@ namespace BackendCoopSoft.Controllers
             var horaMarcada = hoy + dto.Hora;
 
             // ⭐ NUEVO: ajustar hora de entrada esperada según licencias
+
+            bool esSalida = asistenciasHoy.Any(a => a.EsEntrada) && !asistenciasHoy.Any(a => !a.EsEntrada);
+
+            // ⭐ SOLO validar licencias bloqueantes para ENTRADA
+            if (!asistenciasHoy.Any()) // primera marcación del día = ENTRADA
+            {
+                if (await TrabajadorEnLicenciaAsync(dto.IdTrabajador, fechaHoraMarcacion, esSalida: false))
+                {
+                    return Ok(new AsistenciaRegistrarResultadoDTO
+                    {
+                        Registrado = false,
+                        TipoMarcacion = "EN_PROCESO",
+                        Mensaje = "No es posible registrar asistencia porque el trabajador se encuentra con una licencia autorizada en este horario."
+                    });
+                }
+            }
+
+
             var horaEntradaReprogramada = await ObtenerHoraEntradaEsperadaAsync(
                 dto.IdTrabajador,
                 hoy,
@@ -243,7 +248,24 @@ namespace BackendCoopSoft.Controllers
             // Tiempo mínimo para poder marcar salida
             var horaEntradaReal = hoy + entrada.Hora;
 
-            // Minutos de permiso temporal en este día
+            var permisoFinal = await ObtenerPermisoTemporalFinalDelDiaAsync(
+    dto.IdTrabajador,
+    hoy,
+    horarioHoy.HoraSalida);
+
+            bool marcandoDentroPermisoFinal = false;
+
+            if (permisoFinal != null)
+            {
+                var inicioPermisoFinal = hoy + permisoFinal.HoraInicio;
+                var finPermisoFinal = hoy + permisoFinal.HoraFin;
+
+                // ¿La hora de salida está dentro del tramo del permiso final?
+                marcandoDentroPermisoFinal =
+                    horaMarcada >= inicioPermisoFinal &&
+                    horaMarcada <= finPermisoFinal;
+            }
+
             // Minutos de permiso temporal EN LA JORNADA de hoy
             int minutosPermisoTemporal = await ObtenerMinutosPermisoTemporalDiaAsync(
                 dto.IdTrabajador,
@@ -260,7 +282,7 @@ namespace BackendCoopSoft.Controllers
             var minimoSalida = horaEntradaReal.AddMinutes(minutosJornadaEfectiva);
 
 
-            if (horaMarcada < minimoSalida)
+            if (!marcandoDentroPermisoFinal && horaMarcada < minimoSalida)
             {
                 var faltan = minimoSalida - horaMarcada;
 
@@ -296,7 +318,7 @@ namespace BackendCoopSoft.Controllers
             });
         }
 
-        private async Task<bool> TrabajadorEnLicenciaAsync(int idTrabajador, DateTime fechaHoraMarcacion)
+        private async Task<bool> TrabajadorEnLicenciaAsync(int idTrabajador, DateTime fechaHoraMarcacion, bool esSalida)
         {
             var fecha = fechaHoraMarcacion.Date;
 
@@ -319,20 +341,45 @@ namespace BackendCoopSoft.Controllers
                     continue;
 
                 bool esPermisoTemporal =
-                    string.Equals(
-                        l.TipoLicencia.ValorCategoria,
-                        TIPO_PERMISO_TEMPORAL,
-                        StringComparison.OrdinalIgnoreCase);
+            string.Equals(
+                l.TipoLicencia.ValorCategoria,
+                TIPO_PERMISO_TEMPORAL,
+                StringComparison.OrdinalIgnoreCase);
 
                 bool esCumpleanios = l.IdTipoLicencia == ID_TIPO_LICENCIA_CUMPLEANIOS;
 
-                // 🔹 IMPORTANTE:
-                // Permiso temporal y Cumpleaños NO bloquean marcación
-                if (esPermisoTemporal || esCumpleanios)
-                    continue;
-
+                // Rango de la licencia en esa fecha
                 var inicio = l.FechaInicio.Date + l.HoraInicio;
                 var fin = l.FechaFin.Date + l.HoraFin;
+
+                if (esPermisoTemporal)
+                {
+                    if (!esSalida)
+                    {
+                        // 👉 ENTRADA: bloquear SIEMPRE dentro del intervalo del permiso
+                        if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion <= fin)
+                            return true;
+                    }
+                    else
+                    {
+                        // 👉 SALIDA:
+                        // Para permisos temporales, NUNCA bloqueamos la marcación de salida.
+                        // La lógica de si puede o no salir antes ya la controlas con:
+                        // - minutosPermisoTemporal
+                        // - minimoSalida
+                        // - y el caso especial del permiso final (marcandoDentroPermisoFinal).
+                    }
+
+                    // Para cualquier permiso temporal, ya tratamos la ENTRADA / SALIDA aquí:
+                    continue;
+                }
+
+
+                if (esCumpleanios)
+                {
+                    // Por ahora el cumpleaños NO bloquea la marcación (lo dejas como lo tenías)
+                    continue;
+                }
 
                 // Licencias "normales": bloquean todo el intervalo
                 if (fechaHoraMarcacion >= inicio && fechaHoraMarcacion <= fin)
@@ -466,5 +513,35 @@ namespace BackendCoopSoft.Controllers
 
             return (int)Math.Round(totalMinutos, MidpointRounding.AwayFromZero);
         }
+
+        private async Task<Licencia?> ObtenerPermisoTemporalFinalDelDiaAsync(
+    int idTrabajador,
+    DateTime fecha,
+    TimeSpan horaSalidaHorario)
+        {
+            const string TIPO_PERMISO_TEMPORAL = "Permiso temporal";
+
+            return await _db.Licencias
+                .Include(l => l.EstadoLicencia)
+                .Include(l => l.TipoLicencia)
+                .Where(l =>
+                    l.IdTrabajador == idTrabajador &&
+                    l.FechaInicio.Date == fecha.Date &&
+                    l.FechaFin.Date == fecha.Date &&
+                    l.EstadoLicencia.Categoria == "EstadoSolicitud" &&
+                    l.EstadoLicencia.ValorCategoria == "Aprobado" &&
+                    l.TipoLicencia != null &&
+                    l.TipoLicencia.ValorCategoria == TIPO_PERMISO_TEMPORAL &&
+
+                    // 🔴 En vez de "HoraFin == horaSalidaHorario":
+                    // el permiso tiene que TOCAR el último tramo de la jornada:
+                    l.HoraInicio < horaSalidaHorario &&   // empieza antes de la hora de salida
+                    l.HoraFin >= horaSalidaHorario        // termina en o después de la hora de salida
+                )
+                .OrderByDescending(l => l.HoraInicio)  // por si hubiera varios, tomamos el "más pegado" al final
+                .FirstOrDefaultAsync();
+        }
+
+
     }
 }

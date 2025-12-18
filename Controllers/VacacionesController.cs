@@ -212,10 +212,19 @@ namespace BackendCoopSoft.Controllers
                     .ThenInclude(t => t.Persona)
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Cargo)
+                .Include(s => s.EstadoSolicitud)
                 .FirstOrDefaultAsync(s => s.IdVacacion == id);
 
             if (solicitudesVacacion is null)
                 return NotFound();
+
+            var estadoActual = solicitudesVacacion.EstadoSolicitud?.ValorCategoria ?? string.Empty;
+
+            if (estadoActual.Equals("Rechazado", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("La solicitud ya fue rechazada y no puede aprobarse.");
+
+            if (estadoActual.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("La solicitud ya está aprobada.");
 
             var cargoTrabajador = solicitudesVacacion.Trabajador?.Cargo?.NombreCargo;
 
@@ -283,13 +292,24 @@ namespace BackendCoopSoft.Controllers
             var solicitudVacacion = await _db.Vacaciones
                 .Include(s => s.Trabajador)
                     .ThenInclude(t => t.Cargo)
+                .Include(s => s.EstadoSolicitud)
                 .FirstOrDefaultAsync(s => s.IdVacacion == id);
 
             if (solicitudVacacion is null)
                 return NotFound();
 
+
+            var estadoActual = solicitudVacacion.EstadoSolicitud?.ValorCategoria ?? string.Empty;
+
+            if (estadoActual.Equals("Rechazado", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("La solicitud ya está rechazada.");
+
+            if (estadoActual.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("No se puede rechazar una solicitud ya aprobada.");
+
             var cargoTrabajador = solicitudVacacion.Trabajador?.Cargo?.NombreCargo;
 
+            
             // 2) Validar permiso
             if (!PuedeGestionarSegunRol(rolActual, cargoTrabajador))
                 return Forbid("No tiene permiso para rechazar la vacación de este trabajador.");
