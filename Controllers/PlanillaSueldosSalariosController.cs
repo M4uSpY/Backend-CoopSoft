@@ -252,6 +252,7 @@ namespace BackendCoopSoft.Controllers
                     .Where(f =>
                         f.IdTipoFalta == idTipoInasistenciaLaboral &&
                         f.EstadoFalta &&
+                        (f.ArchivoJustificativo == null || f.ArchivoJustificativo.Length == 0) &&
                         f.Fecha.Date >= planilla.PeriodoDesde.Date &&
                         f.Fecha.Date <= planilla.PeriodoHasta.Date)
                     .ToListAsync();
