@@ -118,11 +118,11 @@ namespace BackendCoopSoft.Controllers
 
             var horaMarcada = hoy + dto.Hora;
 
-            // ⭐ NUEVO: ajustar hora de entrada esperada según licencias
+            // ajustar hora de entrada esperada según licencias
 
             bool esSalida = asistenciasHoy.Any(a => a.EsEntrada) && !asistenciasHoy.Any(a => !a.EsEntrada);
 
-            // ⭐ SOLO validar licencias bloqueantes para ENTRADA
+            // SOLO validar licencias bloqueantes para ENTRADA
             if (!asistenciasHoy.Any()) // primera marcación del día = ENTRADA
             {
                 if (await TrabajadorEnLicenciaAsync(dto.IdTrabajador, fechaHoraMarcacion, esSalida: false))
@@ -165,7 +165,7 @@ namespace BackendCoopSoft.Controllers
                 }
 
                 // Tolerancia de 2 minutos antes de considerar atraso
-                var limiteSinAtraso = horaEntradaProgramada.AddMinutes(2);
+                var limiteSinAtraso = horaEntradaProgramada.AddMinutes(MINUTOS_TOLERANCIA_RETRASO);
                 bool esAtrasado = horaMarcada > limiteSinAtraso;
 
                 double minutosRetraso = 0;
