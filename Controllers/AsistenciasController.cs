@@ -28,6 +28,42 @@ namespace BackendCoopSoft.Controllers
         private const int ID_TIPO_LICENCIA_CUMPLEANIOS = 24;
 
 
+        // ========================= FERIA DOS BOLIVIA =========================
+
+        // Feriados fijos (día / mes)
+        private static readonly HashSet<(int Dia, int Mes)> FeriadosFijos = new()
+        {
+            (1, 1),   // 1 enero - Año Nuevo
+            (22, 1),  // 22 enero - Día del Estado Plurinacional
+            (1, 5),   // 1 mayo - Día del Trabajo
+            (16, 7),  // 16 julio - Día de La Paz
+            (6, 8),   // 6 agosto - Día de Bolivia
+            (2, 11),  // 2 noviembre - Día de los Difuntos
+            (25, 12), // 25 diciembre - Navidad
+        };
+
+        // Feriados móviles (solo ejemplo 2025, ajustas cada año)
+        private static readonly HashSet<DateTime> FeriadosMovibles = new()
+        {
+            new DateTime(2025, 4, 3), // Viernes Santo 2025
+            new DateTime(2025, 6, 4), // Corpus Christi 2025
+        };
+
+        private static bool EsFeriado(DateTime fecha)
+        {
+            // Feriados fijos (por día/mes)
+            if (FeriadosFijos.Contains((fecha.Day, fecha.Month)))
+                return true;
+
+            // Feriados móviles (comparando solo la fecha)
+            if (FeriadosMovibles.Contains(fecha.Date))
+                return true;
+
+            return false;
+        }
+
+
+
 
         public AsistenciasController(AppDbContext db, IMapper mapper)
         {
@@ -50,6 +86,17 @@ namespace BackendCoopSoft.Controllers
         {
             var hoy = dto.Fecha.Date;
             var fechaHoraMarcacion = dto.Fecha.Date + dto.Hora;
+
+            // 🔹 Si hoy es feriado, NO se registra asistencia
+            if (EsFeriado(hoy))
+            {
+                return Ok(new AsistenciaRegistrarResultadoDTO
+                {
+                    Registrado = false,
+                    TipoMarcacion = "FERIADO",
+                    Mensaje = $"Hoy ({hoy:dd/MM/yyyy}) es feriado. No es necesario registrar asistencia."
+                });
+            }
 
             // =========================================================
             // 1) VACACIONES / PERMISOS APROBADOS (Solicitud)
